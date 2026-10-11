@@ -166,7 +166,9 @@ export default function App() {
     const a = document.createElement('a');
     a.href = url;
     a.download = `${slug(doc.meta.title)}.pdfstudio.json`;
+    document.body.appendChild(a);
     a.click();
+    a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
   }, [doc, assets, messages]);
 
@@ -307,7 +309,7 @@ export default function App() {
             e.target.value = '';
           }}
         />
-        <Toolbar className="top-tools" size="small" onClickCapture={(e) => e.preventDefault()}>
+        <Toolbar className="top-tools" size="small">
           <Tooltip content="Open complete project" relationship="label">
             <ToolbarButton type="button" icon={<ArrowUpload20Regular />} onClick={() => projectInputRef.current?.click()} />
           </Tooltip>
