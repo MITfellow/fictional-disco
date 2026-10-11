@@ -98,6 +98,7 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<{ chars: number; reply: string } | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [onboarding, setOnboarding] = useState(() => localStorage.getItem('fluent-pdf-studio.onboarding.v1') !== 'done');
   const [zoom, setZoom] = useState<Zoom>('fit');
   const [pdfData, setPdfData] = useState<ArrayBuffer | null>(null);
   const [compiling, setCompiling] = useState(false);
@@ -276,6 +277,11 @@ export default function App() {
     return `${p.label.replace(/ —.*/, '')} · ${settings.model || p.defaultModel}`;
   }, [settings]);
 
+  const finishOnboarding = () => {
+    localStorage.setItem('fluent-pdf-studio.onboarding.v1', 'done');
+    setOnboarding(false);
+  };
+
   const zoomStep = (d: number) => {
     const cur = typeof zoom === 'number' ? zoom : info.scale;
     const next = d > 0 ? ZOOMS.find((z) => z > cur + 0.01) ?? ZOOMS[ZOOMS.length - 1] : [...ZOOMS].reverse().find((z) => z < cur - 0.01) ?? ZOOMS[0];
@@ -406,6 +412,27 @@ export default function App() {
           </div>
         </section>
       </main>
+      {onboarding ? (
+        <div className="onboarding" role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
+          <div className="onboarding-card">
+            <div className="onboarding-mark"><img src="/favicon.svg" alt="" width={30} height={30} /></div>
+            <Caption1 className="onboarding-kicker">WELCOME TO PDF STUDIO</Caption1>
+            <h1 id="onboarding-title">What will you make today?</h1>
+            <p className="onboarding-lead">Create polished documents through conversation. Write, draw, study, refine and export—without rebuilding your work after every change.</p>
+            <div className="onboarding-steps">
+              <div><span>1</span><strong>Describe</strong><small>Ask for notes, a report, worksheet or proposal.</small></div>
+              <div><span>2</span><strong>Refine</strong><small>Edit sections, diagrams and design in plain language.</small></div>
+              <div><span>3</span><strong>Publish</strong><small>Download the PDF or save the complete project.</small></div>
+            </div>
+            <div className="onboarding-actions">
+              <Button appearance="primary" size="large" onClick={finishOnboarding}>Start creating</Button>
+              <Button appearance="secondary" size="large" as="a" href="/sample-electromagnetic-induction.pdf" target="_blank">View sample PDF</Button>
+              <Button appearance="subtle" size="large" onClick={() => { finishOnboarding(); setSettingsOpen(true); }}>Connect AI</Button>
+            </div>
+            <p className="onboarding-note">No account required. Your workspace saves automatically in this browser.</p>
+          </div>
+        </div>
+      ) : null}
       <SettingsDialog open={settingsOpen} settings={settings} onClose={() => setSettingsOpen(false)} onSave={setSettings} />
     </FluentProvider>
   );
