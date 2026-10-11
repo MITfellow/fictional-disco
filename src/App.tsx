@@ -22,6 +22,8 @@ import {
   DocumentAdd20Regular,
   ArrowFit20Regular,
   Settings20Regular,
+  Save20Regular,
+  ArrowUpload20Regular,
   WeatherMoon20Regular,
   WeatherSunny20Regular,
   ZoomIn20Regular,
@@ -104,6 +106,7 @@ export default function App() {
   const [chatW, setChatW] = useState(() => Number(localStorage.getItem('fluent-pdf-studio.chatW')) || 440);
   const abortRef = useRef<AbortController | null>(null);
   const lastBlob = useRef<Blob | null>(null);
+  const projectInputRef = useRef<HTMLInputElement>(null);
 
   const { doc, assets, messages, past, future } = state;
 
@@ -155,6 +158,23 @@ export default function App() {
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
   }, [doc.meta.title]);
+
+  const saveProject = useCallback(() => {
+    const payload = JSON.stringify({ format: 'fluent-pdf-studio', version: 1, savedAt: new Date().toISOString(), doc, assets, messages: messages.slice(-80) });
+    const url = URL.createObjectURL(new Blob([payload], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${slug(doc.meta.title)}.pdfstudio.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  }, [doc, assets, messages]);
+
+  const openProject = useCallback(async (file: File) => {
+    if (file.size > 50 * 1024 * 1024) throw new Error('Project files must be smaller than 50 MB.');
+    const parsed = JSON.parse(await file.text()) as { format?: string; doc?: typeof doc; assets?: typeof assets; messages?: typeof messages };
+    if (parsed.format !== 'fluent-pdf-studio' || !parsed.doc?.meta || !Array.isArray(parsed.doc.blocks)) throw new Error('This is not a valid PDF Studio project.');
+    dispatch({ type: 'loadProject', state: { doc: parsed.doc, assets: parsed.assets ?? {}, messages: parsed.messages ?? [] } });
+  }, [dispatch]);
 
   const send = useCallback(
     async (text: string, attachments: Asset[]) => {
@@ -270,7 +290,24 @@ export default function App() {
           <span className="brand-name">PDF Studio</span>
         </div>
         <input className="doc-title" value={doc.meta.title} onChange={(e) => setDoc({ ...doc, meta: { ...doc.meta, title: e.target.value } }, false)} aria-label="Document title" spellCheck={false} />
+        <input
+          ref={projectInputRef}
+          className="project-input"
+          type="file"
+          accept=".json,.pdfstudio.json,application/json"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) openProject(file).catch((err) => window.alert(err instanceof Error ? err.message : String(err)));
+            e.target.value = '';
+          }}
+        />
         <Toolbar className="top-tools" size="small">
+          <Tooltip content="Open complete project" relationship="label">
+            <ToolbarButton icon={<ArrowUpload20Regular />} onClick={() => projectInputRef.current?.click()} />
+          </Tooltip>
+          <Tooltip content="Save complete project" relationship="label">
+            <ToolbarButton icon={<Save20Regular />} onClick={saveProject} />
+          </Tooltip>
           <Tooltip content="New document" relationship="label">
             <ToolbarButton icon={<DocumentAdd20Regular />} onClick={newDoc} />
           </Tooltip>

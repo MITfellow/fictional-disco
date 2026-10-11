@@ -21,6 +21,7 @@ type Action =
   | { type: 'addMessage'; msg: ChatMessage }
   | { type: 'patchMessage'; id: string; patch: Partial<ChatMessage> }
   | { type: 'addAssets'; assets: Asset[] }
+  | { type: 'loadProject'; state: Pick<StudioState, 'doc' | 'assets' | 'messages'> }
   | { type: 'clearChat' };
 
 const HISTORY = 60;
@@ -80,6 +81,14 @@ function reducer(s: StudioState, a: Action): StudioState {
       a.assets.forEach((x) => (assets[x.id] = x));
       return { ...s, assets };
     }
+    case 'loadProject':
+      return {
+        doc: removeUnsafeComponents(normalizeDoc(a.state.doc)),
+        assets: a.state.assets ?? {},
+        messages: Array.isArray(a.state.messages) && a.state.messages.length ? a.state.messages : [welcomeMessage()],
+        past: [...s.past, s.doc].slice(-HISTORY),
+        future: [],
+      };
     case 'clearChat':
       return { ...s, messages: [welcomeMessage()] };
   }
@@ -117,19 +126,25 @@ function load(): StudioState {
 export function useStudio() {
   const [state, dispatch] = useReducer(reducer, undefined, load);
   useEffect(() => {
-    const t = setTimeout(() => {
+    const persist = () => {
       try {
         localStorage.setItem(STATE_KEY, JSON.stringify({ doc: state.doc, assets: state.assets, messages: state.messages.slice(-80) }));
       } catch {
-        // quota exceeded (large images) — persist without assets
+        // quota exceeded (large images) — preserve the document and chat even
+        // when embedded image data is too large for localStorage.
         try {
           localStorage.setItem(STATE_KEY, JSON.stringify({ doc: state.doc, assets: {}, messages: state.messages.slice(-80) }));
         } catch {
-          /* give up */
+          /* storage unavailable */
         }
       }
-    }, 400);
-    return () => clearTimeout(t);
+    };
+    const t = setTimeout(persist, 400);
+    window.addEventListener('pagehide', persist);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('pagehide', persist);
+    };
   }, [state.doc, state.assets, state.messages]);
 
   const setDoc = useCallback((doc: DocSpec, record = true) => dispatch({ type: 'setDoc', doc, record }), []);

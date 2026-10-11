@@ -53,6 +53,7 @@ body.resizing iframe, body.resizing canvas { pointer-events: none; }
 }
 .doc-title:hover { background: var(--colorSubtleBackgroundHover); }
 .doc-title:focus { outline: none; background: var(--colorNeutralBackground1); border-color: var(--colorNeutralStroke1); color: var(--colorNeutralForeground1); }
+.project-input { display: none; }
 .top-tools { gap: 2px; flex-shrink: 0; }
 .top-tools svg { color: var(--colorNeutralForeground3); }
 .top-tools button:hover svg { color: var(--colorNeutralForeground1); }
