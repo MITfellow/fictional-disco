@@ -903,7 +903,7 @@ function BlockView({ b, ctx }: { b: Block; ctx: Ctx }): ReactNode {
       );
     }
     case 'figure': {
-      const scene = layoutFigure(b, theme, ctx.contentW - 26, ctx.contentH * 0.55, !ctx.vivid);
+      const scene = layoutFigure(b, theme, ctx.contentW - (b.fullPage ? 4 : 26), ctx.contentH * (b.fullPage ? 0.86 : 0.55), !ctx.vivid);
       return (
         <View wrap={false} style={{ marginVertical: 10 }}>
           <FigureCard ctx={ctx}>

@@ -197,7 +197,7 @@ export function normalizeBlock(raw: unknown): Block | null {
     case 'figure': {
       const elements = arr<unknown>(r.elements ?? r.shapes ?? r.items).map(normalizeElement).filter((e): e is FigElement => !!e).slice(0, 400);
       if (!elements.length) return null;
-      return { id, type, width: Math.max(1, num(r.width, 100)), height: Math.max(1, num(r.height, 60)), elements, caption: opt(r.caption), scale: Number(r.scale) ? Math.max(10, Math.min(100, Number(r.scale))) : undefined, side: r.side === 'left' || r.side === 'right' ? r.side : undefined, beside: Number(r.beside) ? Math.max(1, Math.min(3, Math.round(Number(r.beside)))) : undefined };
+      return { id, type, width: Math.max(1, num(r.width, 100)), height: Math.max(1, num(r.height, 60)), elements, caption: opt(r.caption), scale: Number(r.scale) ? Math.max(10, Math.min(100, Number(r.scale))) : undefined, fullPage: !!r.fullPage, side: r.side === 'left' || r.side === 'right' ? r.side : undefined, beside: Number(r.beside) ? Math.max(1, Math.min(3, Math.round(Number(r.beside)))) : undefined };
     }
     case 'box': {
       let variant = str(r.variant ?? r.kind ?? r.style ?? (origType !== 'box' ? origType : 'note')).toLowerCase() as BoxVariant;
