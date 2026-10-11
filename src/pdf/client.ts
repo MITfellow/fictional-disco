@@ -19,6 +19,29 @@ function omitUnsafePlots(doc: DocSpec): DocSpec {
   return { ...doc, blocks: clean(doc.blocks) };
 }
 
+/** Remove the numerically traced magnet-field component while preserving the
+ * rest of each teaching diagram. Existing documents in localStorage may still
+ * contain it even after the template is updated. */
+function removeTracedMagnetFields(doc: DocSpec): DocSpec {
+  const clean = (blocks: DocSpec['blocks']): DocSpec['blocks'] => blocks.map((block) => {
+    if (block.type === 'figure') {
+      return { ...block, elements: block.elements.map((element) => /^(magnet|barmagnet)$/i.test(element.type) ? { ...element, lines: 0 } : element) };
+    }
+    if (block.type === 'box' && block.blocks) return { ...block, blocks: clean(block.blocks) };
+    return block;
+  });
+  return { ...doc, blocks: clean(doc.blocks) };
+}
+
+function omitFigures(doc: DocSpec): DocSpec {
+  const clean = (blocks: DocSpec['blocks']): DocSpec['blocks'] => blocks.flatMap((block) => {
+    if (block.type === 'figure') return [];
+    if (block.type === 'box' && block.blocks) return [{ ...block, blocks: clean(block.blocks) }];
+    return [block];
+  });
+  return { ...doc, blocks: clean(doc.blocks) };
+}
+
 /** Compiles PDFs off the main thread (falls back to the main thread if workers fail). */
 class PdfCompiler {
   private worker: Worker | null = null;
@@ -70,9 +93,17 @@ class PdfCompiler {
         return blob.arrayBuffer();
       } catch (boundedError) {
         if (!(boundedError instanceof Error) || !/unsupported number|not a finite number/i.test(boundedError.message)) throw boundedError;
-        const recovered = omitUnsafePlots(bounded);
-        const blob = await compilePdf(recovered, assets);
-        return blob.arrayBuffer();
+        const recovered = removeTracedMagnetFields(omitUnsafePlots(bounded));
+        try {
+          const blob = await compilePdf(recovered, assets);
+          return blob.arrayBuffer();
+        } catch (figureError) {
+          if (!(figureError instanceof Error) || !/unsupported number|not a finite number/i.test(figureError.message)) throw figureError;
+          // Last resort requested by the user: remove the offending diagram
+          // component rather than leaving the complete PDF unavailable.
+          const blob = await compilePdf(omitFigures(recovered), assets);
+          return blob.arrayBuffer();
+        }
       }
     }
   }

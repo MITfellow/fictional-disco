@@ -31,7 +31,7 @@ export function induction(): DocSpec {
           210,
           [
             { type: 'text', at: [85, 205], text: 'CAUSE: change the linked magnetic flux', fontSize: 9, color: '#3a3631' },
-            { type: 'magnet', center: [27, 183], size: [34, 11], kind: 'SN', lines: 4, label: 'moving source' },
+            { type: 'magnet', center: [27, 183], size: [34, 11], kind: 'SN', label: 'moving source' },
             { type: 'velocity', from: [14, 198], to: [39, 198], label: '$\vec v$', width: 1.5 },
             { type: 'solenoid', from: [62, 182], to: [112, 182], r: 13, coils: 11, label: 'primary $N_1$' },
             { type: 'arrow', from: [44, 182], to: [119, 182], color: '#5f7d9c', width: 1.1, label: '$\Delta\Phi_B$', labelPos: 'above' },
@@ -85,7 +85,7 @@ export function induction(): DocSpec {
         150,
         58,
         [
-          { type: 'magnet', center: [26, 30], size: [34, 10], kind: 'SN', lines: 2 },
+          { type: 'magnet', center: [26, 30], size: [34, 10], kind: 'SN' },
           { type: 'velocity', from: [14, 52], to: [34, 52], label: '$\\vec v$', width: 1.3 },
           { type: 'solenoid', from: [66, 34], to: [116, 34], r: 10, coils: 9 },
           { type: 'wire', points: [[66, 14], [66, 5], [82, 5]] },
