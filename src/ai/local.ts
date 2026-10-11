@@ -121,7 +121,10 @@ export function runLocal(promptRaw: string, current: DocSpec, attachments: Asset
     return { reply: 'Cleared the canvas. What should we create?', doc, changes: ['Cleared document'] };
   }
   const sci = detectScienceTopic(p);
-  if (sci && !/^(add|insert|append|include|put)\b/.test(p) && (CREATE_RE.test(p) || isFresh || /\b(notes?|lecture|explain|teach|chapter|worksheet)\b/.test(p))) {
+  // A physics topic on its own ("emi", "show faraday's law", "electromagnetic induction") opens those notes;
+  // only explicit edit commands ("add …", "change …") are treated as edits to the current document.
+  const shortAsk = p.trim().split(/\s+/).length <= 6;
+  if (sci && !/^(add|insert|append|include|put|change|set|replace|remove|delete|rename|make it|switch)\b/.test(p) && (shortAsk || CREATE_RE.test(p) || isFresh || /\b(notes?|lecture|explain|teach|chapter|worksheet|show|open|pdf)\b/.test(p))) {
     doc = buildScienceNotes(sci, { theme: pickTheme(p), style: /\bmodern\b/.test(p) ? 'modern' : undefined });
     applyStyleEdits(p, prompt, doc, changes);
     changes.push(`New ${sci} notes`);
