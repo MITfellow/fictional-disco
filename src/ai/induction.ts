@@ -9,7 +9,7 @@ const plot = (p: Omit<Extract<Block, { type: 'plot' }>, 'id' | 'type'>): Block =
 export function induction(): DocSpec {
   return {
     meta: meta('Electromagnetic Induction', 'A visual masterclass in flux, induced fields, magnetic energy and modern applications', 'ink', {
-      kicker: 'THE INSTITUTE OF ADVANCED PHYSICS · MASTERCLASS EDITION',
+      kicker: 'SENIOR PHYSICS · ELECTROMAGNETISM · MASTERCLASS EDITION',
       cover: false,
       coverStyle: 'minimal',
       toc: false,

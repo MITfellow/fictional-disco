@@ -1200,7 +1200,7 @@ function sanitize<T>(v: T): T {
 export function PdfDocument({ doc: rawDoc, opts }: { doc: DocSpec; opts: RenderOpts }) {
   const doc = sanitize(rawDoc);
   const m = doc.meta;
-  const masterclass = /INSTITUTE OF ADVANCED PHYSICS/i.test(m.kicker ?? '');
+  const masterclass = /MASTERCLASS EDITION/i.test(m.kicker ?? '');
   const theme = THEMES[m.theme] ?? THEMES.ink;
   const font = FAMILY[m.font] ?? FAMILY.sans;
   const base = PAGE_DIMS[m.pageSize] ?? PAGE_DIMS.A4;
@@ -1325,7 +1325,24 @@ export function PdfDocument({ doc: rawDoc, opts }: { doc: DocSpec; opts: RenderO
           </View>
         ) : null}
         {!m.cover && academic && !minimal ? (
-          <View style={{ marginBottom: masterclass ? 20 : 14, paddingTop: masterclass ? 18 : 0, paddingBottom: masterclass ? 12 : 0, alignItems: 'center', borderTopWidth: masterclass ? 0.8 : 0, borderTopColor: theme.primary }}>
+          <View style={{ marginBottom: masterclass ? 20 : 14, paddingTop: masterclass ? 10 : 0, paddingBottom: masterclass ? 12 : 0, alignItems: 'center', borderTopWidth: masterclass ? 1.4 : 0, borderTopColor: theme.primary }}>
+            {masterclass ? (
+              <View style={{ alignSelf: 'stretch', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, marginBottom: 22 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={{ width: 32, height: 32, backgroundColor: theme.primary, alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+                    <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: 700, letterSpacing: 1 }}>IAP</Text>
+                  </View>
+                  <View>
+                    <Text style={{ fontSize: 8.2, color: theme.text, fontWeight: 700, letterSpacing: 1.25 }}>INSTITUTE OF ADVANCED PHYSICS</Text>
+                    <Text style={{ fontSize: 6.8, color: theme.muted, letterSpacing: 0.8, marginTop: 3 }}>COLLEGIATE STUDIES IN NATURAL PHILOSOPHY</Text>
+                  </View>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={{ fontSize: 7, color: theme.primary, fontWeight: 700, letterSpacing: 1 }}>MONOGRAPH 01</Text>
+                  <Text style={{ fontSize: 6.5, color: theme.muted, marginTop: 3 }}>MASTERCLASS SERIES</Text>
+                </View>
+              </View>
+            ) : null}
             {m.kicker ? <Text style={{ fontSize: masterclass ? 8.5 : 8, letterSpacing: masterclass ? 2.2 : 1.8, color: theme.primary, fontWeight: 700, marginBottom: masterclass ? 14 : 8 }}>{m.kicker.toUpperCase()}</Text> : null}
             <Text style={{ fontSize: masterclass ? (size[0] < 500 ? 24 : 29) : size[0] < 500 ? 19 : 22, fontWeight: masterclass ? 500 : 600, color: theme.text, lineHeight: masterclass ? 1.16 : 1.25, textAlign: 'center', letterSpacing: masterclass ? -0.45 : -0.2 }}>{m.title}</Text>
             {m.subtitle ? <Text style={{ maxWidth: masterclass ? '82%' : '100%', fontSize: masterclass ? 12 : 11.5, color: theme.muted, marginTop: masterclass ? 10 : 6, lineHeight: 1.4, textAlign: 'center', fontStyle: 'italic' }}>{m.subtitle}</Text> : null}
