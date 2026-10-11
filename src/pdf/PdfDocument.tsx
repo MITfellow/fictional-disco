@@ -311,9 +311,9 @@ function TableView({ b, ctx }: { b: TableBlock; ctx: Ctx }) {
   }
   return (
     <View style={{ marginVertical: 8 }}>
-      <View style={{ borderRadius: 6, borderWidth: 1, borderColor: theme.border, overflow: 'hidden' }}>
+      <View style={{ borderRadius: ctx.vivid ? 6 : 2, borderTopWidth: 1, borderBottomWidth: 1, borderLeftWidth: ctx.vivid ? 1 : 0, borderRightWidth: ctx.vivid ? 1 : 0, borderColor: ctx.vivid ? theme.border : theme.muted, overflow: 'hidden' }}>
         {headers.length ? (
-          <View style={{ flexDirection: 'row', backgroundColor: ctx.vivid ? theme.primary : theme.soft, borderBottomWidth: ctx.vivid ? 0 : 1, borderBottomColor: theme.primary }} wrap={false}>
+          <View style={{ flexDirection: 'row', backgroundColor: ctx.vivid ? theme.primary : 'transparent', borderBottomWidth: ctx.vivid ? 0 : 0.7, borderBottomColor: ctx.vivid ? theme.primary : theme.muted }} wrap={false}>
             {Array.from({ length: cols }, (_, c) => (
               <Text
                 key={c}
@@ -340,8 +340,8 @@ function TableView({ b, ctx }: { b: TableBlock; ctx: Ctx }) {
               wrap={false}
               style={{
                 flexDirection: 'row',
-                backgroundColor: isTotal ? theme.soft : b.striped !== false && ri % 2 === 1 ? theme.softer : '#ffffff',
-                borderTopWidth: ri === 0 && headers.length ? 0 : isTotal ? 1.2 : 0.6,
+                backgroundColor: isTotal ? theme.soft : ctx.vivid && b.striped !== false && ri % 2 === 1 ? theme.softer : 'transparent',
+                borderTopWidth: ri === 0 && headers.length ? 0 : isTotal ? 1 : ctx.vivid ? 0.6 : 0.35,
                 borderTopColor: isTotal ? theme.primary : theme.border,
               }}
             >
@@ -397,7 +397,7 @@ function Caption({ text, ctx }: { text?: string; ctx: Ctx }) {
 function FigureCard({ children, ctx }: { children: ReactNode; ctx: Ctx }) {
   if (ctx.academic) return <View style={{ paddingVertical: 4, alignItems: 'center' }}>{children}</View>;
   return (
-    <View style={{ borderWidth: ctx.vivid ? 1 : 0.7, borderColor: ctx.theme.border, borderRadius: 8, padding: 12, backgroundColor: ctx.vivid ? '#ffffff' : 'transparent', alignItems: 'center' }}>{children}</View>
+    <View style={{ borderWidth: ctx.vivid ? 1 : 0, borderColor: ctx.theme.border, borderRadius: ctx.vivid ? 8 : 0, paddingVertical: ctx.vivid ? 12 : 8, paddingHorizontal: ctx.vivid ? 12 : 4, backgroundColor: ctx.vivid ? '#ffffff' : 'transparent', alignItems: 'center' }}>{children}</View>
   );
 }
 
@@ -570,6 +570,23 @@ function BoxView({ b, ctx }: { b: BoxBlock; ctx: Ctx }) {
       </View>
     );
   const formula = b.variant === 'formula' || b.variant === 'summary';
+  // Natural modern documents use an editorial margin rule instead of a nested
+  // card with a coloured title bar. It keeps every box type available while
+  // making mixed study pages feel like one coherent printed document.
+  if (!ctx.vivid)
+    return (
+      <View wrap={keep ? false : undefined} style={{ marginVertical: 9 * ctx.ty.k, paddingVertical: 6, paddingLeft: 12, paddingRight: 5, borderLeftWidth: formula ? 2.2 : 1.4, borderLeftColor: tint(color, formula ? 0.2 : 0.45), backgroundColor: formula ? tint(color, 0.96) : 'transparent' }}>
+        <Text style={{ fontSize: 8.2, fontWeight: 700, letterSpacing: 0.75, color: shade(color, 0.1), marginBottom: 4 }}>
+          {label.toUpperCase()}
+          {b.title ? (
+            <Text style={{ fontSize: 10.2, letterSpacing: 0, color: theme.text }}>
+              {'  ·  '}<Inline text={b.title} ctx={ctx} size={10.2} />
+            </Text>
+          ) : null}
+        </Text>
+        {body}
+      </View>
+    );
   return (
     <View wrap={keep ? false : undefined} style={{ marginVertical: 10 * ctx.ty.k, borderRadius: 8, borderWidth: ctx.vivid ? 1 : 0.8, borderColor: tint(color, 0.7), backgroundColor: formula ? tint(color, 0.955) : ctx.vivid ? '#ffffff' : 'transparent', overflow: 'hidden' }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 11, paddingVertical: 6, backgroundColor: tint(color, 0.9), borderBottomWidth: 0.8, borderBottomColor: tint(color, 0.75) }}>
@@ -595,10 +612,10 @@ function StepsView({ b, ctx }: { b: StepsBlock; ctx: Ctx }) {
       {items.map((it, i) => (
         <View key={i} wrap={false} style={{ flexDirection: 'row' }}>
           <View style={{ width: 24, alignItems: 'center' }}>
-            <View style={{ width: 17, height: 17, borderRadius: 9, backgroundColor: ctx.academic ? tint(theme.primary, 0.88) : theme.primary, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontFamily: FAMILY.sans, fontSize: 8, lineHeight: 1, fontWeight: 700, color: ctx.academic ? theme.primaryDark : '#ffffff' }}>{i + 1}</Text>
+            <View style={{ width: 17, height: 17, borderRadius: 9, backgroundColor: ctx.academic || !ctx.vivid ? tint(theme.primary, 0.9) : theme.primary, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontFamily: FAMILY.sans, fontSize: 8, lineHeight: 1, fontWeight: 700, color: ctx.academic || !ctx.vivid ? theme.primaryDark : '#ffffff' }}>{i + 1}</Text>
             </View>
-            {i < items.length - 1 ? <View style={{ width: 1.2, flexGrow: 1, backgroundColor: ctx.academic ? '#cbd5e1' : tint(theme.primary, 0.6), marginVertical: 2 }} /> : null}
+            {i < items.length - 1 ? <View style={{ width: 1.2, flexGrow: 1, backgroundColor: ctx.academic || !ctx.vivid ? theme.border : tint(theme.primary, 0.6), marginVertical: 2 }} /> : null}
           </View>
           <View style={{ flex: 1, paddingLeft: 8, paddingBottom: 10, paddingTop: 1.5 }}>
             {it.text ? (
@@ -669,11 +686,11 @@ function BlockView({ b, ctx }: { b: Block; ctx: Ctx }): ReactNode {
     case 'diagram': {
       const maxW = ctx.contentW - 26;
       const maxH = Math.min(b.height ?? 9999, ctx.contentH * 0.62);
-      let scene0 = layoutDiagram(b, theme);
+      let scene0 = layoutDiagram(b, theme, !ctx.vivid);
       let k = Math.min(maxW / scene0.width, maxH / scene0.height, 1.1);
       if (b.kind === 'flowchart' && k < 0.68) {
         // too cramped: try the other direction and keep whichever reads better
-        const alt = layoutDiagram({ ...b, direction: b.direction === 'LR' ? 'TB' : 'LR' }, theme);
+        const alt = layoutDiagram({ ...b, direction: b.direction === 'LR' ? 'TB' : 'LR' }, theme, !ctx.vivid);
         const k2 = Math.min(maxW / alt.width, maxH / alt.height, 1.1);
         if (k2 > k * 1.15) {
           scene0 = alt;
@@ -886,7 +903,7 @@ function BlockView({ b, ctx }: { b: Block; ctx: Ctx }): ReactNode {
       );
     }
     case 'figure': {
-      const scene = layoutFigure(b, theme, ctx.contentW - 26, ctx.contentH * 0.55);
+      const scene = layoutFigure(b, theme, ctx.contentW - (b.fullPage ? 4 : 26), ctx.contentH * (b.fullPage ? 0.86 : 0.55), !ctx.vivid);
       return (
         <View wrap={false} style={{ marginVertical: 10 }}>
           <FigureCard ctx={ctx}>
@@ -1135,7 +1152,7 @@ function SideFigure({ g, ctx }: { g: Block[]; ctx: Ctx }) {
   const gap = 18;
   const figW = Math.round(ctx.contentW * Math.min(0.55, Math.max(0.28, (f.scale ?? 42) / 100)));
   const textW = ctx.contentW - figW - gap;
-  const scene = layoutFigure({ ...f, scale: 100 }, ctx.theme, figW, ctx.contentH * 0.5);
+  const scene = layoutFigure({ ...f, scale: 100 }, ctx.theme, figW, ctx.contentH * 0.5, !ctx.vivid);
   const figCol = (
     <View style={{ width: figW, alignItems: 'center' }}>
       <FigureCard ctx={ctx}>

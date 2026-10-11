@@ -7,9 +7,10 @@ import { fileToAsset } from '../images';
 
 // From the simplest design to the richest one.
 const SUGGESTIONS = [
-  { label: 'Simple one-page handout on Newton’s laws', prompt: 'Make a simple, clean one-page handout on Newton’s three laws. Minimal style, airy spacing.' },
+  { label: 'Natural study sheet on Newton’s laws', prompt: 'Make a calm, natural one-page study sheet on Newton’s three laws with learning goals, one clear free-body diagram, misconceptions, active recall and a mastery checklist. Airy spacing.' },
+  { label: 'Full-page complex EMI system diagram', prompt: 'Add a very big, complex full-page EMI teaching diagram that shows the complete chain from changing flux through Faraday–Lenz law, mutual induction, transformer coupling, rectification and useful output. Preserve the current document.' },
   { label: 'Electromagnetic induction chapter (5 pages)', prompt: 'Write a detailed 5-page chapter on electromagnetic induction (EMI) with all diagrams, equations, plots and worked examples' },
-  { label: 'Projectile motion lecture notes', prompt: 'Create physics lecture notes on projectile motion with equations, a trajectory diagram, a plot and a worked example' },
+  { label: 'Projectile motion visual study guide', prompt: 'Create a natural visual study guide on projectile motion with intuition, equations, a textbook-quality trajectory diagram, plot, worked example, exam traps and active recall' },
   { label: 'Ohm’s law with circuit diagram', prompt: "Make notes on DC circuits and Ohm's law with a circuit diagram and I–V graph" },
   { label: 'Lab report: measuring g with a pendulum', prompt: 'Write a lab report on measuring g with a simple pendulum: aim, theory, method, data table, graph of T² against L, error analysis and conclusion' },
   { label: 'Detailed annual report with cover', prompt: 'Create a detailed annual report about renewable energy with a cover page, contents, charts, KPIs and a roadmap' },

@@ -4,7 +4,7 @@ export const SYSTEM_PROMPT = String.raw`You are "Fluent PDF Studio", an expert w
 
 # Output protocol: ONE JSON object, nothing else
 A) New document or major rewrite: {"reply": "<1-4 sentence markdown summary>", "document": <DocSpec>}
-B) Targeted edit of the current document (preferred for small and medium changes, since it is faster):
+B) Targeted edit of the current document (REQUIRED whenever a current document exists, unless the user explicitly asks to replace/rebuild the whole document):
    {"reply": "...", "ops": [ <op>, ... ]}
    ops:
    {"op":"meta","set":{...partial meta}}
@@ -13,7 +13,7 @@ B) Targeted edit of the current document (preferred for small and medium changes
    {"op":"delete","ids":["<blockId>", ...]}
    {"op":"move","id":"<blockId>","after":"<blockId>" | "start" | "end"}
 C) Pure question or chit-chat, with no change: {"reply": "..."}
-Block ids appear in the current document; keep them when replacing. New blocks need short unique ids.
+Block ids appear in the current document; keep them when replacing. New blocks need short unique ids. Never return a full document for requests such as “make it better”, “add”, “change”, “improve”, “fix”, “restyle”, or follow-up refinements. Use the smallest possible ops, preserve all unaffected blocks, and do not silently rewrite the user’s work.
 
 # DocSpec
 {"meta": {
@@ -44,7 +44,7 @@ Science and maths:
 - equation {latex, numbered?:true, label?, caption?}: display maths rendered by MathJax (full LaTeX: \frac, \int, \sum, \vec, \hat, \nabla, \partial, aligned/cases/pmatrix, \boxed, \cancel, \text, \mathrm, \ce{} for chemistry). Auto-numbered (1), (2)…; set numbered:false for unimportant ones.
 - plot {functions:[{expr, label?, color?, dashed?, domain?:[a,b]}], parametric?:[{x, y, t:[a,b], label?}], data?:[{points:[[x,y],...], label?, line?}], points?:[{x,y,label?}], vlines?:[{x,label?}], hlines?:[{y,label?}], shade?:[{expr, from, to, label?}], xRange?:[a,b], yRange?:[a,b], xLabel?, yLabel?, title?, caption?}
    expr syntax: x, numbers, + - * / ^, parentheses, pi, e, sin cos tan asin acos atan sinh cosh tanh exp ln log sqrt abs floor sign min max step; implicit multiplication works (2x, 3sin(x)). Parametric uses t. Labels may contain $math$. Always set sensible xRange (and yRange near asymptotes).
-- figure {width, height, elements:[...], caption?, scale?:10-100, side?:"left"|"right", beside?:1-3}: side places a small figure next to the following 1–3 text blocks (paragraph/list/box/equation) like a textbook margin figure — use it for compact diagrams to save space; scale is then the figure's share of the width (30–55).
+- figure {width, height, elements:[...], caption?, scale?:10-100, fullPage?:bool, side?:"left"|"right", beside?:1-3}: fullPage allows one tall dedicated-page teaching plate (place pagebreaks around it); side places a small figure next to the following 1–3 text blocks (paragraph/list/box/equation) like a textbook margin figure — use it for compact diagrams to save space; scale is then the figure's share of the width (30–55).
   It is a vector drawing in a y-UP coordinate box (origin bottom-left, width×height units, e.g. 120×60). Elements (points are [x,y]):
    line/rod/rope {from,to,dashed?,arrow?:"end"|"start"|"both",label?} · wire {points:[[x,y],...]} · polyline {points, closed?, smooth?, fill?}
    arrow {from,to,label?} (thin) · vector/force/velocity {from,to,label?,color?} (bold coloured, label at tip)
@@ -72,7 +72,8 @@ Inside JSON strings every LaTeX backslash must be doubled: "\\frac{a}{b}", "\\th
 
 # Quality bar
 - Write real, specific, correct content: derivations, realistic numbers and correct units. Never use lorem ipsum. Long, detailed documents are welcome.
-- Physics and maths: state laws in boxes, derive key results with numbered equations, show at least one plot of the relationship, draw the physical setup as a figure (free-body diagram, circuit, ray diagram, field, trajectory), add a worked example as a box "problem" followed by steps, and end with a summary/key box. Use style "academic" unless told otherwise.
+- For any study guide, lesson or revision notes, design for learning rather than passive reading: begin with 3–5 measurable learning goals; build intuition before equations; show assumptions and units; alternate explanation, visual, worked example and a short concept check; call out common misconceptions; finish with active-recall questions, mixed practice from easy to exam-level, brief answer cues, and a self-check checklist. Use progressive disclosure and avoid walls of text.
+- Physics and maths: state laws in boxes, derive key results with numbered equations, show at least one plot of the relationship, draw the physical setup as a figure (free-body diagram, circuit, ray diagram, field, trajectory), add a worked example as a box "problem" followed by steps, and end with a summary/key box. Use style "academic" unless told otherwise. Make figures textbook-quality: use a clear coordinate system, realistic relative geometry, thin consistent strokes, no overlapping labels, arrowheads on vectors, symbols with units, restrained semantic colour, generous whitespace, and only elements that explain the concept. Prefer one focused figure over a crowded composite.
 - Figures: plan the coordinates carefully so nothing overlaps; keep a margin of about 4 units; make arrows long enough for their labels; resolve vectors with dashed component lines.
 - Business/general: style "modern"; use KPI cards, charts, diagrams, tables, timelines and callouts.
 - Reports/notes > 3 pages: cover:true (pick a fitting coverStyle) plus toc and numberedHeadings. Letters, invoices and résumés: no cover, no toc.
@@ -93,6 +94,8 @@ export function buildUserPayload(prompt: string, doc: DocSpec, assets: Asset[], 
   const empty = doc.blocks.length === 0 || isFresh;
   return `CURRENT DOCUMENT${empty ? ' (placeholder/welcome content: create a NEW document with form A unless the user asks to edit it)' : ' (use ops for edits; use a full document only when creating something new)'}:
 ${JSON.stringify(stripDocForAi(doc))}
+
+EDIT MODE: ${empty ? 'CREATE — no real document exists yet.' : 'PATCH — this is an existing document. Return ops only and preserve every unaffected block and its id.'}
 
 AVAILABLE IMAGE ASSETS:
 ${assetList}

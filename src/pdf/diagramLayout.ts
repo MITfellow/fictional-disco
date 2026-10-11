@@ -19,7 +19,7 @@ interface Box {
   shape: NodeShape;
 }
 
-export function layoutDiagram(block: DiagramBlock, theme: PdfTheme): Scene {
+export function layoutDiagram(block: DiagramBlock, theme: PdfTheme, natural = true): Scene {
   const nodes = dedupeNodes(block.nodes ?? []);
   if (!nodes.length) return { width: 10, height: 10, shapes: [], labels: [] };
   const ids = new Set(nodes.map((n) => n.id));
@@ -32,7 +32,7 @@ export function layoutDiagram(block: DiagramBlock, theme: PdfTheme): Scene {
     case 'cycle':
       return cycle(nodes, edges, theme);
     default:
-      return flowchart(nodes, edges, block.direction === 'LR' ? 'LR' : 'TB', theme);
+      return flowchart(nodes, edges, block.direction === 'LR' ? 'LR' : 'TB', theme, natural);
   }
 }
 
@@ -71,16 +71,16 @@ function measure(n: DiagramNode, shape: NodeShape) {
 }
 
 // ----------------------------------------------------------------- shapes
-function drawNode(b: Box, shapes: Shape[], labels: Label[]) {
+function drawNode(b: Box, shapes: Shape[], labels: Label[], natural: boolean) {
   const { x, y, w, h, color, shape } = b;
   const x0 = x - w / 2;
   const y0 = y - h / 2;
-  const solid = shape === 'pill' || shape === 'circle';
-  const fill = solid ? color : tint(color, 0.88);
-  const stroke = solid ? shade(color, 0.08) : color;
-  const sw = 1.3;
-  // soft drop shadow
-  const shadow = { fill: '#0f172a', opacity: 0.06 };
+  // Natural documents use restrained, paper-like tints rather than glossy UI cards.
+  const solid = !natural && (shape === 'pill' || shape === 'circle');
+  const fill = solid ? color : tint(color, natural ? 0.93 : 0.88);
+  const stroke = solid ? shade(color, 0.08) : natural ? tint(color, 0.28) : color;
+  const sw = natural ? 0.85 : 1.3;
+  const shadow = { fill: '#2c2924', opacity: natural ? 0 : 0.06 };
   switch (shape) {
     case 'diamond': {
       const pts: [number, number][] = [
@@ -208,7 +208,7 @@ function roundedPath(pts: [number, number][], r = 8): string {
 }
 
 // --------------------------------------------------------------- flowchart
-function flowchart(nodes: DiagramNode[], edges: DiagramEdge[], dir: 'LR' | 'TB', theme: PdfTheme): Scene {
+function flowchart(nodes: DiagramNode[], edges: DiagramEdge[], dir: 'LR' | 'TB', theme: PdfTheme, natural: boolean): Scene {
   const idx = new Map(nodes.map((n, i) => [n.id, i]));
   const out = new Map<string, string[]>();
   nodes.forEach((n) => out.set(n.id, []));
@@ -490,7 +490,7 @@ function flowchart(nodes: DiagramNode[], edges: DiagramEdge[], dir: 'LR' | 'TB',
 
   shapes.push(...edgeShapes);
   const nodeLabels: Label[] = [];
-  boxes.forEach((b) => drawNode(b, shapes, nodeLabels));
+  boxes.forEach((b) => drawNode(b, shapes, nodeLabels, natural));
   return { width, height, shapes, labels: [...nodeLabels, ...labels] };
 }
 

@@ -9,9 +9,14 @@ const plot = (p: Omit<Extract<Block, { type: 'plot' }>, 'id' | 'type'>): Block =
 export function induction(): DocSpec {
   return {
     meta: meta('Electromagnetic Induction', 'Faraday’s law, Lenz’s law, inductance and the AC generator', 'ink', {
-      kicker: 'Physics · Chapter 6',
+      kicker: 'PHYSICS · ORAL EXAM MASTER CHAPTER',
+      cover: false,
+      coverStyle: 'minimal',
+      toc: false,
+      numberedHeadings: true,
+      density: 'comfortable',
       pageNumbers: true,
-      footer: 'Electromagnetic Induction',
+      footer: 'Electromagnetic Induction · Complete Revision Chapter',
     }),
     blocks: [
       BOX(
@@ -19,6 +24,65 @@ export function induction(): DocSpec {
         undefined,
         'A changing magnetic field can drive a current through a circuit with no battery at all. We follow that idea from Faraday’s experiments to flux, Faraday’s and Lenz’s laws, inductance, RL circuits and the AC generator.',
       ),
+
+      // A dedicated full-page synthesis plate: complex on purpose, but layered
+      // so students can follow cause → flux change → emf → current → load.
+      { id: uid(), type: 'pagebreak' },
+      {
+        ...FIG(
+          170,
+          210,
+          [
+            { type: 'text', at: [85, 205], text: 'COMPLETE ELECTROMAGNETIC INDUCTION SYSTEM', fontSize: 10, color: '#3a3631' },
+            { type: 'text', at: [85, 197], text: '1 · CAUSE — change the magnetic flux linked with a coil', fontSize: 8.5, color: '#6b645a' },
+            { type: 'magnet', center: [27, 181], size: [34, 11], kind: 'SN' },
+            { type: 'text', at: [27, 168], text: 'moving magnet', fontSize: 7.5, color: '#6b645a' },
+            { type: 'velocity', from: [14, 198], to: [39, 198], label: '$\vec v$', width: 1.5 },
+            { type: 'solenoid', from: [62, 181], to: [112, 181], r: 13, coils: 11 },
+            { type: 'text', at: [87, 198], text: 'primary coil · N₁ turns', fontSize: 7.5, color: '#6b645a' },
+            { type: 'arrow', from: [44, 182], to: [119, 182], color: '#5f7d9c', width: 1.1, label: '$\Delta\Phi_B$', labelPos: 'above' },
+            { type: 'dimension', from: [62, 161], to: [112, 161], label: 'area $A$, length $\ell$' },
+            { type: 'wire', points: [[62, 156], [62, 146], [72, 146]] },
+            { type: 'galvanometer', from: [72, 146], to: [91, 146], label: '$G_1$' },
+            { type: 'resistor', from: [91, 146], to: [118, 146], label: '$R_1$' },
+            { type: 'wire', points: [[118, 146], [112, 146], [112, 156]] },
+            { type: 'vector', from: [76, 153], to: [101, 153], label: '$I_1$', color: '#9a5a43', width: 1.2 },
+            { type: 'text', at: [139, 182], text: '$\varepsilon_1=-N_1\,d\Phi_B/dt$', fontSize: 8.5, color: '#3a3631' },
+
+            { type: 'line', from: [8, 134], to: [162, 134], dashed: true, color: '#c8c1b5', width: 0.7 },
+            { type: 'text', at: [85, 128], text: '2 · COUPLING — primary flux links a second coil', fontSize: 9, color: '#3a3631' },
+            { type: 'rect', center: [85, 103], size: [94, 22], fill: '#ded9ce', color: '#8a847a', label: 'laminated magnetic core' },
+            { type: 'solenoid', from: [47, 104], to: [72, 104], r: 17, coils: 7, kind: 'noleads', label: '$N_1$' },
+            { type: 'solenoid', from: [99, 104], to: [124, 104], r: 17, coils: 10, kind: 'noleads', label: '$N_2$' },
+            { type: 'arrow', from: [69, 103], to: [103, 103], dashed: true, color: '#5f7d9c', width: 1.1, label: '$\Phi_{21}$' },
+            { type: 'wire', points: [[47, 86], [47, 76], [57, 76]] },
+            { type: 'source', from: [57, 76], to: [75, 76], label: 'AC' },
+            { type: 'wire', points: [[75, 76], [72, 76], [72, 86]] },
+            { type: 'wire', points: [[99, 86], [99, 76], [109, 76]] },
+            { type: 'voltmeter', from: [109, 76], to: [127, 76], label: '$V_2$' },
+            { type: 'wire', points: [[127, 76], [124, 76], [124, 86]] },
+            { type: 'text', at: [148, 103], text: '$\varepsilon_2=-M\,dI_1/dt$', fontSize: 8.3, color: '#3a3631' },
+
+            { type: 'line', from: [8, 64], to: [162, 64], dashed: true, color: '#c8c1b5', width: 0.7 },
+            { type: 'text', at: [85, 58], text: '3 · OUTPUT — induced current transfers energy to a load', fontSize: 9, color: '#3a3631' },
+            { type: 'wire', points: [[20, 42], [20, 22], [38, 22]] },
+            { type: 'diode', from: [38, 22], to: [58, 22], label: 'rectifier' },
+            { type: 'capacitor', from: [68, 14], to: [68, 34], label: '$C$' },
+            { type: 'wire', points: [[58, 22], [68, 22], [82, 22]] },
+            { type: 'ammeter', from: [82, 22], to: [101, 22], label: '$A$' },
+            { type: 'bulb', from: [118, 34], to: [118, 14], label: 'load' },
+            { type: 'wire', points: [[101, 22], [118, 22], [118, 34]] },
+            { type: 'wire', points: [[118, 14], [118, 8], [20, 8], [20, 22]] },
+            { type: 'vector', from: [76, 42], to: [102, 42], label: 'current I', color: '#9a5a43', width: 1.2 },
+            { type: 'text', at: [145, 31], text: '$P_{load}=I^2R$\nenergy conserved', fontSize: 8.2, color: '#3a3631' },
+            { type: 'text', at: [85, 2], text: 'INPUT → CHANGING FLUX → INDUCED EMF → CURRENT → OUTPUT + HEAT', fontSize: 8, color: '#6b645a' },
+          ],
+          'Full-system electromagnetic-induction plate. The two experiments share the same chain of reasoning: identify what changes the flux, apply Faraday–Lenz, then follow the induced current and energy.',
+          100,
+        ),
+        fullPage: true,
+      } as Block,
+      { id: uid(), type: 'pagebreak' },
 
       // ------------------------------------------------------------ 1
       H(1, 'The experiments of Faraday and Henry'),
@@ -171,14 +235,14 @@ export function induction(): DocSpec {
         150,
         56,
         [
-          { type: 'solenoid', from: [14, 34], to: [58, 34], r: 10, coils: 8, label: 'primary, $N_1$' },
+          { type: 'solenoid', from: [14, 34], to: [58, 34], r: 10, coils: 8, label: 'primary N₁' },
           { type: 'wire', points: [[14, 14], [14, 5], [22, 5]] },
           { type: 'battery', from: [22, 5], to: [38, 5] },
           { type: 'switch', from: [40, 5], to: [54, 5], label: 'S', labelPos: 'below' },
           { type: 'wire', points: [[38, 5], [40, 5]] },
           { type: 'wire', points: [[54, 5], [58, 5], [58, 14]] },
-          { type: 'arrow', from: [62, 34], to: [84, 34], dashed: true, color: '#5f7d9c', width: 1, label: '$\\Phi_{21}$' },
-          { type: 'solenoid', from: [90, 34], to: [136, 34], r: 10, coils: 9, label: 'secondary, $N_2$' },
+          { type: 'arrow', from: [62, 34], to: [84, 34], dashed: true, color: '#5f7d9c', width: 1, label: 'linked flux Φ₂₁' },
+          { type: 'solenoid', from: [90, 34], to: [136, 34], r: 10, coils: 9, label: 'secondary N₂' },
           { type: 'wire', points: [[90, 14], [90, 5], [104, 5]] },
           { type: 'galvanometer', from: [104, 5], to: [122, 5] },
           { type: 'wire', points: [[122, 5], [136, 5], [136, 14]] },
@@ -274,6 +338,35 @@ export function induction(): DocSpec {
       BOX('example', 'Mains frequency', '$100$ turns of area $0.050\\ \\mathrm{m^2}$ turning at $50\\ \\mathrm{Hz}$ in $0.20\\ \\mathrm{T}$: $\\omega = 314\\ \\mathrm{rad\\,s^{-1}}$, so $\\varepsilon_0 = NBA\\omega = 314\\ \\mathrm{V}$.'),
 
       // ------------------------------------------------------------ 10
+      H(1, 'Teacher viva: questions you must answer aloud'),
+      P('Practise these without looking at the formulas. Begin with the physical idea, state the relevant law, then give the mathematical relation with units and assumptions.'),
+      H(2, 'Rapid-fire conceptual questions'),
+      L([
+          '**Why is no current induced when a magnet is held still inside a coil?** Flux may be large, but $d\\Phi_B/dt=0$.',
+          '**What does the minus sign in Faraday’s law mean?** The induced effect opposes the *change* in linked flux; it expresses Lenz’s law and energy conservation.',
+          '**Can emf exist without current?** Yes. An open circuit can have induced emf, but current requires a closed conducting path.',
+          '**How can flux change if $B$ is constant?** Change area, orientation, or the fraction of the field intercepted by the loop.',
+          '**Why does a transformer require alternating current?** A steady primary current gives steady flux, so the secondary has no sustained induced emf.',
+          '**Why are transformer cores laminated?** Thin insulated sheets interrupt eddy-current loops and reduce heating.',
+          '**What sets the direction of motional emf?** The magnetic force $q\\vec v\\times\\vec B$, combined with Lenz’s law for the complete circuit.',
+          '**Where is energy stored in an inductor?** In its magnetic field, with $U=LI^2/2$ and density $u_B=B^2/(2\\mu)$.',
+          '**Why can current through an ideal inductor not jump instantly?** An instantaneous change would require infinite $dI/dt$ and therefore infinite back emf.',
+          '**At $t=\\tau$ in an RL growth circuit, what has happened?** Current reaches $1-e^{-1}=63.2\\%$ of its final value.',
+          '**Flux and emf in a generator are how far out of phase?** One quarter-cycle, or $\\pi/2$ radians.',
+          '**Does Lenz’s law oppose motion in every case?** It opposes the flux change; magnetic drag is the mechanical consequence when motion causes that change.',
+        ], true),
+      H(2, 'Exam-level numerical checklist'),
+      L([
+        '[ ] I write the flux linkage $N\\Phi_B$ before differentiating.',
+        '[ ] I convert centimetres to metres and milliseconds to seconds.',
+        '[ ] I separate emf magnitude from direction.',
+        '[ ] I state whether the circuit is open or closed before finding current.',
+        '[ ] I check dimensions: $\\mathrm{Wb/s}=\\mathrm{V}$ and $\\mathrm{H/\\Omega}=\\mathrm{s}$.',
+        '[ ] I test limiting cases such as $t=0$, $t\\to\\infty$, or $\\theta=90^\\circ$.',
+      ], false),
+      BOX('tip', 'A strong oral answer', 'Use this four-part pattern: **observation → law → equation → consequence**. Example: “The linked flux is decreasing; by Lenz’s law the coil reinforces the original field; Faraday’s law gives $|\\varepsilon|=N|d\\Phi/dt|$; therefore the induced current reverses when the motion reverses.”'),
+
+      // ------------------------------------------------------------ 11
       H(1, 'Summary'),
       TABLE(
         ['Quantity', 'Relation', 'SI unit'],

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useReducer, useState } from 'react';
-import type { AiSettings, Asset, ChatMessage, DocSpec } from './types';
-import { buildWelcome } from './ai/templates';
+import type { AiSettings, Asset, Block, ChatMessage, DocSpec } from './types';
+import { buildScienceNotes } from './ai/science';
 import { normalizeDoc, uid } from './normalize';
 
-const STATE_KEY = 'fluent-pdf-studio.state.v1';
+const STATE_KEY = 'fluent-pdf-studio.state.v3'; // loads the complete EMI oral-exam chapter requested for this workspace
 const SETTINGS_KEY = 'fluent-pdf-studio.settings.v1';
 
 export interface StudioState {
@@ -21,9 +21,41 @@ type Action =
   | { type: 'addMessage'; msg: ChatMessage }
   | { type: 'patchMessage'; id: string; patch: Partial<ChatMessage> }
   | { type: 'addAssets'; assets: Asset[] }
+  | { type: 'loadProject'; state: Pick<StudioState, 'doc' | 'assets' | 'messages'> }
   | { type: 'clearChat' };
 
 const HISTORY = 60;
+const SAFE_NUMBER = 1_000_000_000;
+
+function hasUnsafeNumber(value: unknown): boolean {
+  if (typeof value === 'number') return !Number.isFinite(value) || Math.abs(value) > SAFE_NUMBER;
+  if (Array.isArray(value)) return value.some(hasUnsafeNumber);
+  if (!value || typeof value !== 'object') return false;
+  return Object.values(value as Record<string, unknown>).some(hasUnsafeNumber);
+}
+
+/** Remove a single malformed generated component instead of allowing it to
+ * poison the saved document and every subsequent compile. */
+export function removeUnsafeComponents(doc: DocSpec): DocSpec {
+  let changed = false;
+  const blocks: Block[] = [];
+  for (const block of doc.blocks) {
+    if (block.type === 'figure') {
+      const elements = block.elements.filter((element) => !hasUnsafeNumber(element));
+      if (elements.length !== block.elements.length) changed = true;
+      if (!elements.length) {
+        changed = true;
+        continue;
+      }
+      blocks.push(elements.length === block.elements.length ? block : { ...block, elements });
+    } else if (hasUnsafeNumber(block)) {
+      changed = true;
+    } else {
+      blocks.push(block);
+    }
+  }
+  return changed ? { ...doc, blocks } : doc;
+}
 
 function reducer(s: StudioState, a: Action): StudioState {
   switch (a.type) {
@@ -49,6 +81,14 @@ function reducer(s: StudioState, a: Action): StudioState {
       a.assets.forEach((x) => (assets[x.id] = x));
       return { ...s, assets };
     }
+    case 'loadProject':
+      return {
+        doc: removeUnsafeComponents(normalizeDoc(a.state.doc)),
+        assets: a.state.assets ?? {},
+        messages: Array.isArray(a.state.messages) && a.state.messages.length ? a.state.messages : [welcomeMessage()],
+        past: [...s.past, s.doc].slice(-HISTORY),
+        future: [],
+      };
     case 'clearChat':
       return { ...s, messages: [welcomeMessage()] };
   }
@@ -60,7 +100,7 @@ export function welcomeMessage(): ChatMessage {
     role: 'assistant',
     time: Date.now(),
     engine: 'Fluent PDF Studio',
-    text: "Hi! I'm your **AI document designer**. Tell me what to make and I'll write, draw and typeset it as a real PDF on the right: physics or maths notes with equations, plots and diagrams, lab reports, worksheets, reports, proposals and more.\n\nKeep refining in plain words, e.g. *add a worked example*, *add a graph of $v$ against $t$*, *make it landscape*, *add a cover page*. Attach images with the paperclip button, or paste or drop them here.",
+    text: "Welcome to a fresh **PDF Studio** workspace. Describe a document and I’ll write, draw and typeset it on the right. Then keep refining it in plain words—edits preserve the rest of your work.\n\nTry: *create an EMI study guide with diagrams and worked examples*. You can also [open the sample EMI PDF](/sample-electromagnetic-induction.pdf).",
   };
 }
 
@@ -70,7 +110,7 @@ function load(): StudioState {
     if (raw) {
       const j = JSON.parse(raw);
       return {
-        doc: normalizeDoc(j.doc),
+        doc: removeUnsafeComponents(normalizeDoc(j.doc)),
         assets: j.assets ?? {},
         messages: Array.isArray(j.messages) && j.messages.length ? j.messages : [welcomeMessage()],
         past: [],
@@ -80,25 +120,31 @@ function load(): StudioState {
   } catch {
     /* ignore corrupt state */
   }
-  return { doc: buildWelcome(), assets: {}, messages: [welcomeMessage()], past: [], future: [] };
+  return { doc: buildScienceNotes('induction'), assets: {}, messages: [welcomeMessage()], past: [], future: [] };
 }
 
 export function useStudio() {
   const [state, dispatch] = useReducer(reducer, undefined, load);
   useEffect(() => {
-    const t = setTimeout(() => {
+    const persist = () => {
       try {
         localStorage.setItem(STATE_KEY, JSON.stringify({ doc: state.doc, assets: state.assets, messages: state.messages.slice(-80) }));
       } catch {
-        // quota exceeded (large images) — persist without assets
+        // quota exceeded (large images) — preserve the document and chat even
+        // when embedded image data is too large for localStorage.
         try {
           localStorage.setItem(STATE_KEY, JSON.stringify({ doc: state.doc, assets: {}, messages: state.messages.slice(-80) }));
         } catch {
-          /* give up */
+          /* storage unavailable */
         }
       }
-    }, 400);
-    return () => clearTimeout(t);
+    };
+    const t = setTimeout(persist, 400);
+    window.addEventListener('pagehide', persist);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('pagehide', persist);
+    };
   }, [state.doc, state.assets, state.messages]);
 
   const setDoc = useCallback((doc: DocSpec, record = true) => dispatch({ type: 'setDoc', doc, record }), []);

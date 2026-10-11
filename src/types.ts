@@ -241,6 +241,8 @@ export interface FigureBlock extends BaseBlock {
   elements: FigElement[];
   caption?: string;
   scale?: number; // 10-100 percent of content width
+  /** allow a tall, dedicated-page teaching plate */
+  fullPage?: boolean;
   /** place the figure beside the following text (paragraph / list / box / equation) */
   side?: 'left' | 'right';
   /** how many following blocks sit beside a side figure (default 1, max 3) */

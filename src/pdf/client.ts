@@ -2,6 +2,23 @@ import type { Asset, DocSpec } from '../types';
 
 type Pending = { resolve: (b: ArrayBuffer) => void; reject: (e: Error) => void };
 
+const SOURCE_LIMIT = 1_000_000;
+function boundNumbers(value: unknown): unknown {
+  if (typeof value === 'number') return Number.isFinite(value) ? Math.max(-SOURCE_LIMIT, Math.min(SOURCE_LIMIT, value)) : 0;
+  if (Array.isArray(value)) return value.map(boundNumbers);
+  if (!value || typeof value !== 'object') return value;
+  return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, boundNumbers(v)]));
+}
+
+function omitUnsafePlots(doc: DocSpec): DocSpec {
+  const clean = (blocks: DocSpec['blocks']): DocSpec['blocks'] => blocks.flatMap((block) => {
+    if (block.type === 'plot') return [];
+    if (block.type === 'box' && block.blocks) return [{ ...block, blocks: clean(block.blocks) }];
+    return [block];
+  });
+  return { ...doc, blocks: clean(doc.blocks) };
+}
+
 /** Compiles PDFs off the main thread (falls back to the main thread if workers fail). */
 class PdfCompiler {
   private worker: Worker | null = null;
@@ -39,8 +56,25 @@ class PdfCompiler {
   private async compileMain(doc: DocSpec, assets: Record<string, Asset>) {
     const [{ registerBrowserFonts }, { compilePdf }] = await Promise.all([import('./fonts.browser'), import('./compile')]);
     registerBrowserFonts();
-    const blob = await compilePdf(doc, assets);
-    return blob.arrayBuffer();
+    try {
+      const blob = await compilePdf(doc, assets);
+      return blob.arrayBuffer();
+    } catch (error) {
+      // Never leave the preview unusable because provider-authored geometry hit
+      // PDFKit's numeric limits. Retry with bounded source values, then isolate
+      // plots (the usual source is a finite value near an asymptote).
+      if (!(error instanceof Error) || !/unsupported number|not a finite number/i.test(error.message)) throw error;
+      const bounded = boundNumbers(doc) as DocSpec;
+      try {
+        const blob = await compilePdf(bounded, assets);
+        return blob.arrayBuffer();
+      } catch (boundedError) {
+        if (!(boundedError instanceof Error) || !/unsupported number|not a finite number/i.test(boundedError.message)) throw boundedError;
+        const recovered = omitUnsafePlots(bounded);
+        const blob = await compilePdf(recovered, assets);
+        return blob.arrayBuffer();
+      }
+    }
   }
 
   async compile(doc: DocSpec, assets: Record<string, Asset>): Promise<ArrayBuffer> {
@@ -53,7 +87,7 @@ class PdfCompiler {
         this.worker!.postMessage({ id, doc, assets });
       });
     } catch (e) {
-      if (e instanceof Error && e.message === '__retry__') return this.compileMain(doc, assets);
+      if (e instanceof Error && (e.message === '__retry__' || /unsupported number|not a finite number/i.test(e.message))) return this.compileMain(doc, assets);
       throw e;
     }
   }

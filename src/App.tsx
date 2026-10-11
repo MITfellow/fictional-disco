@@ -22,13 +22,15 @@ import {
   DocumentAdd20Regular,
   ArrowFit20Regular,
   Settings20Regular,
+  Save20Regular,
+  ArrowUpload20Regular,
   WeatherMoon20Regular,
   WeatherSunny20Regular,
   ZoomIn20Regular,
   ZoomOut20Regular,
 } from '@fluentui/react-icons';
 import type { Asset } from './types';
-import { useDarkMode, useSettings, useStudio } from './store';
+import { removeUnsafeComponents, useDarkMode, useSettings, useStudio } from './store';
 import { ChatPanel } from './chat/ChatPanel';
 import { PdfPreview, type Zoom } from './preview/PdfPreview';
 import { compiler } from './pdf/client';
@@ -96,16 +98,26 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<{ chars: number; reply: string } | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [onboarding, setOnboarding] = useState(() => localStorage.getItem('fluent-pdf-studio.onboarding.v1') !== 'done');
   const [zoom, setZoom] = useState<Zoom>('fit');
   const [pdfData, setPdfData] = useState<ArrayBuffer | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [compiling, setCompiling] = useState(false);
   const [compileError, setCompileError] = useState<string | null>(null);
   const [info, setInfo] = useState({ pages: 0, current: 1, scale: 1 });
   const [chatW, setChatW] = useState(() => Number(localStorage.getItem('fluent-pdf-studio.chatW')) || 440);
   const abortRef = useRef<AbortController | null>(null);
   const lastBlob = useRef<Blob | null>(null);
+  const projectInputRef = useRef<HTMLInputElement>(null);
 
   const { doc, assets, messages, past, future } = state;
+
+  // Remove a malformed AI-generated primitive from both current and persisted
+  // state before it can repeatedly poison the preview.
+  useEffect(() => {
+    const repaired = removeUnsafeComponents(doc);
+    if (repaired !== doc) setDoc(repaired);
+  }, [doc, setDoc]);
 
   // ------------------------------------------------------------ compile
   useEffect(() => {
@@ -131,23 +143,72 @@ export default function App() {
     };
   }, [doc, assets]);
 
+  // Keep a native downloadable URL mounted in the DOM. This works reliably in
+  // sandboxed previews where synthetic anchor clicks may be blocked.
+  useEffect(() => {
+    if (!pdfData) {
+      setPdfUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(new Blob([pdfData.slice(0)], { type: 'application/pdf' }));
+    setPdfUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [pdfData]);
+
   // ------------------------------------------------------------ actions
   const newDoc = useCallback(() => {
     setDoc(buildWelcome());
     dispatch({ type: 'clearChat' });
   }, [setDoc, dispatch]);
 
-  const download = useCallback(() => {
+  const download = useCallback(async () => {
     if (!lastBlob.current) return;
-    const url = URL.createObjectURL(lastBlob.current);
+    const filename = `${slug(doc.meta.title)}.pdf`;
+    const blob = lastBlob.current;
+    // Prefer the native Save dialog. Unlike anchor downloads, this works in
+    // embedded/sandboxed app previews when the browser supports it.
+    const picker = (window as unknown as { showSaveFilePicker?: (options: unknown) => Promise<{ createWritable: () => Promise<{ write: (data: Blob) => Promise<void>; close: () => Promise<void> }> }> }).showSaveFilePicker;
+    if (picker) {
+      try {
+        const handle = await picker.call(window, { suggestedName: filename, types: [{ description: 'PDF document', accept: { 'application/pdf': ['.pdf'] } }] });
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        // SecurityError in an iframe: continue to the browser fallback.
+      }
+    }
+    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${slug(doc.meta.title)}.pdf`;
+    a.download = filename;
+    a.target = '_self';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  }, [doc.meta.title]);
+
+  const saveProject = useCallback(() => {
+    const payload = JSON.stringify({ format: 'fluent-pdf-studio', version: 1, savedAt: new Date().toISOString(), doc, assets, messages: messages.slice(-80) });
+    const url = URL.createObjectURL(new Blob([payload], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${slug(doc.meta.title)}.pdfstudio.json`;
     document.body.appendChild(a);
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
-  }, [doc.meta.title]);
+  }, [doc, assets, messages]);
+
+  const openProject = useCallback(async (file: File) => {
+    if (file.size > 50 * 1024 * 1024) throw new Error('Project files must be smaller than 50 MB.');
+    const parsed = JSON.parse(await file.text()) as { format?: string; doc?: typeof doc; assets?: typeof assets; messages?: typeof messages };
+    if (parsed.format !== 'fluent-pdf-studio' || !parsed.doc?.meta || !Array.isArray(parsed.doc.blocks)) throw new Error('This is not a valid PDF Studio project.');
+    dispatch({ type: 'loadProject', state: { doc: parsed.doc, assets: parsed.assets ?? {}, messages: parsed.messages ?? [] } });
+  }, [dispatch]);
 
   const send = useCallback(
     async (text: string, attachments: Asset[]) => {
@@ -249,6 +310,11 @@ export default function App() {
     return `${p.label.replace(/ —.*/, '')} · ${settings.model || p.defaultModel}`;
   }, [settings]);
 
+  const finishOnboarding = () => {
+    localStorage.setItem('fluent-pdf-studio.onboarding.v1', 'done');
+    setOnboarding(false);
+  };
+
   const zoomStep = (d: number) => {
     const cur = typeof zoom === 'number' ? zoom : info.scale;
     const next = d > 0 ? ZOOMS.find((z) => z > cur + 0.01) ?? ZOOMS[ZOOMS.length - 1] : [...ZOOMS].reverse().find((z) => z < cur - 0.01) ?? ZOOMS[0];
@@ -263,25 +329,43 @@ export default function App() {
           <span className="brand-name">PDF Studio</span>
         </div>
         <input className="doc-title" value={doc.meta.title} onChange={(e) => setDoc({ ...doc, meta: { ...doc.meta, title: e.target.value } }, false)} aria-label="Document title" spellCheck={false} />
+        <input
+          ref={projectInputRef}
+          className="project-input"
+          type="file"
+          accept=".json,.pdfstudio.json,application/json"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) openProject(file).catch((err) => window.alert(err instanceof Error ? err.message : String(err)));
+            e.target.value = '';
+          }}
+        />
         <Toolbar className="top-tools" size="small">
+          <Tooltip content="Open complete project" relationship="label">
+            <ToolbarButton type="button" icon={<ArrowUpload20Regular />} onClick={() => projectInputRef.current?.click()} />
+          </Tooltip>
+          <Tooltip content="Save complete project" relationship="label">
+            <ToolbarButton type="button" icon={<Save20Regular />} onClick={saveProject} />
+          </Tooltip>
           <Tooltip content="New document" relationship="label">
-            <ToolbarButton icon={<DocumentAdd20Regular />} onClick={newDoc} />
+            <ToolbarButton type="button" icon={<DocumentAdd20Regular />} onClick={newDoc} />
           </Tooltip>
           <Tooltip content="Undo (Ctrl+Z)" relationship="label">
-            <ToolbarButton icon={<ArrowUndo20Regular />} disabled={!past.length} onClick={() => dispatch({ type: 'undo' })} />
+            <ToolbarButton type="button" icon={<ArrowUndo20Regular />} disabled={!past.length} onClick={() => dispatch({ type: 'undo' })} />
           </Tooltip>
           <Tooltip content="Redo (Ctrl+Shift+Z)" relationship="label">
-            <ToolbarButton icon={<ArrowRedo20Regular />} disabled={!future.length} onClick={() => dispatch({ type: 'redo' })} />
+            <ToolbarButton type="button" icon={<ArrowRedo20Regular />} disabled={!future.length} onClick={() => dispatch({ type: 'redo' })} />
           </Tooltip>
           <Tooltip content={dark ? 'Light mode' : 'Dark mode'} relationship="label">
-            <ToolbarButton icon={dark ? <WeatherSunny20Regular /> : <WeatherMoon20Regular />} onClick={() => setDark(!dark)} />
+            <ToolbarButton type="button" icon={dark ? <WeatherSunny20Regular /> : <WeatherMoon20Regular />} onClick={() => setDark(!dark)} />
           </Tooltip>
           <Tooltip content="AI settings" relationship="label">
-            <ToolbarButton icon={<Settings20Regular />} onClick={() => setSettingsOpen(true)} />
+            <ToolbarButton type="button" icon={<Settings20Regular />} onClick={() => setSettingsOpen(true)} />
           </Tooltip>
-          <Button appearance="primary" icon={<ArrowDownload20Regular />} onClick={download} disabled={!pdfData} className="download-btn">
-            Download
-          </Button>
+          <button type="button" className="native-download" disabled={!pdfUrl} onClick={() => void download()}>
+            <ArrowDownload20Regular />
+            <span>Download PDF</span>
+          </button>
         </Toolbar>
       </header>
 
@@ -329,14 +413,14 @@ export default function App() {
             </span>
             <div className="row gap4 preview-tools">
               <Tooltip content="Zoom out" relationship="label">
-                <Button size="small" appearance="subtle" icon={<ZoomOut20Regular />} onClick={() => zoomStep(-1)} />
+                <Button type="button" size="small" appearance="subtle" icon={<ZoomOut20Regular />} onClick={() => zoomStep(-1)} />
               </Tooltip>
               <Caption1 className="zoom-label">{Math.round(info.scale * 100)}%</Caption1>
               <Tooltip content="Zoom in" relationship="label">
-                <Button size="small" appearance="subtle" icon={<ZoomIn20Regular />} onClick={() => zoomStep(1)} />
+                <Button type="button" size="small" appearance="subtle" icon={<ZoomIn20Regular />} onClick={() => zoomStep(1)} />
               </Tooltip>
               <Tooltip content="Fit to width" relationship="label">
-                <Button size="small" appearance={zoom === 'fit' ? 'secondary' : 'subtle'} icon={<ArrowFit20Regular />} onClick={() => setZoom('fit')} />
+                <Button type="button" size="small" appearance={zoom === 'fit' ? 'secondary' : 'subtle'} icon={<ArrowFit20Regular />} onClick={() => setZoom('fit')} />
               </Tooltip>
             </div>
           </header>
@@ -362,6 +446,41 @@ export default function App() {
           </div>
         </section>
       </main>
+      {onboarding ? (
+        <div className="onboarding" role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
+          <div className="onboarding-card">
+            <div className="onboarding-mark"><img src="/favicon.svg" alt="" width={30} height={30} /></div>
+            <Caption1 className="onboarding-kicker">WELCOME TO PDF STUDIO</Caption1>
+            <h1 id="onboarding-title">What will you make today?</h1>
+            <p className="onboarding-lead">Create polished documents through conversation. Write, draw, study, refine and export—without rebuilding your work after every change.</p>
+            <div className="onboarding-steps">
+              <div><span>1</span><strong>Describe</strong><small>Ask for notes, a report, worksheet or proposal.</small></div>
+              <div><span>2</span><strong>Refine</strong><small>Edit sections, diagrams and design in plain language.</small></div>
+              <div><span>3</span><strong>Publish</strong><small>Download the PDF or save the complete project.</small></div>
+            </div>
+            <div className="quick-start">
+              <div className="quick-head"><strong>Start with a complete example</strong><small>Choose one, or begin with your own idea.</small></div>
+              <div className="quick-grid">
+                <button type="button" onClick={() => { finishOnboarding(); void send('Create a natural visual study guide on electromagnetic induction with learning goals, clear diagrams, derivations, a worked example, exam traps and active recall.', []); }}>
+                  <b>Study guide</b><span>EMI with diagrams and recall</span><em>Physics</em>
+                </button>
+                <button type="button" onClick={() => { finishOnboarding(); void send('Create a polished natural project proposal with an executive summary, process diagram, timeline, pricing table and next steps.', []); }}>
+                  <b>Project proposal</b><span>Structured and presentation-ready</span><em>Business</em>
+                </button>
+                <button type="button" onClick={() => { finishOnboarding(); void send('Make a clean one-page revision sheet with key ideas, formulas, one visual, common mistakes and a self-check list.', []); }}>
+                  <b>Revision sheet</b><span>Compact one-page review</span><em>Study</em>
+                </button>
+              </div>
+            </div>
+            <div className="onboarding-actions">
+              <Button appearance="primary" size="large" onClick={finishOnboarding}>Start creating</Button>
+              <Button appearance="secondary" size="large" as="a" href="/sample-electromagnetic-induction.pdf" target="_blank">View sample PDF</Button>
+              <Button appearance="subtle" size="large" onClick={() => { finishOnboarding(); setSettingsOpen(true); }}>Connect AI</Button>
+            </div>
+            <p className="onboarding-note">No account required. Your workspace saves automatically in this browser.</p>
+          </div>
+        </div>
+      ) : null}
       <SettingsDialog open={settingsOpen} settings={settings} onClose={() => setSettingsOpen(false)} onSave={setSettings} />
     </FluentProvider>
   );

@@ -223,7 +223,7 @@ export function runLocal(promptRaw: string, current: DocSpec, attachments: Asset
 
   // additions
   const add: Block[] = [];
-  const isAdd = /\b(add|insert|append|include|put|create|make|draw|generate|show)\b/.test(p);
+  const isAdd = /\b(add|insert|append|include|put|create|recreate|make|draw|generate|show)\b/.test(p);
   const topic = extractTopic(prompt.replace(/\b(add|insert|append|include|draw|show)\b\s+(a|an|the)?\s*/i, ''));
   const chain = /[:\-]\s*(.+(?:->|→|=>).+)$/s.exec(prompt) ?? /(.+(?:->|→|=>).+)$/s.exec(prompt);
   if (chain) {
@@ -234,6 +234,31 @@ export function runLocal(promptRaw: string, current: DocSpec, attachments: Asset
       changes.push(`Flowchart with ${f.nodes.length} nodes`);
     }
   } else if (isAdd) {
+    // A showcase command available even offline: copy the dedicated EMI plate
+    // into the current document instead of replacing the user's work.
+    if (/\b(emi|electromagnetic induction|faraday)\b/.test(p) && /\b(full[ -]?page|very big|large|complex|detailed)\b/.test(p) && /\b(diagram|plate|figure|schematic)\b/.test(p)) {
+      const source = buildScienceNotes('induction');
+      const plate = source.blocks.find((b) => b.type === 'figure' && b.fullPage);
+      if (plate) {
+        add.push(
+          { id: uid(), type: 'pagebreak' },
+          { id: uid(), type: 'heading', level: 1, text: 'Complete EMI system — full-page visual plate' },
+          { id: uid(), type: 'paragraph', text: 'Follow the system from **cause → changing magnetic flux → induced emf → current → useful output**. The upper experiment shows direct induction; the middle stage shows mutual induction; the lower circuit follows the delivered energy.' },
+          { ...plate, id: uid() },
+          { id: uid(), type: 'pagebreak' },
+        );
+        changes.push('Full-page complex EMI teaching plate');
+        replies.push(`### Full-page EMI plate added
+
+I inserted it as a targeted edit—your existing document is preserved. The plate combines:
+- moving-magnet induction and flux linkage
+- Faraday–Lenz direction and primary current
+- transformer core and mutual inductance
+- measurement, rectification, filtering and load power
+
+It uses a dedicated page at maximum readable scale, demonstrating the figure engine’s larger project capability.`);
+      }
+    }
     // science blocks
     const eqm = /\b(?:equation|formula|latex|math)\b\s*:?\s*(.+)$/i.exec(prompt);
     if (eqm && /[=^_\\]/.test(eqm[1])) {
