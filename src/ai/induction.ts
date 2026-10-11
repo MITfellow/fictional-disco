@@ -8,15 +8,15 @@ const plot = (p: Omit<Extract<Block, { type: 'plot' }>, 'id' | 'type'>): Block =
 
 export function induction(): DocSpec {
   return {
-    meta: meta('Electromagnetic Induction', 'Faraday’s law, Lenz’s law, inductance and the AC generator', 'ink', {
-      kicker: 'PHYSICS · ORAL EXAM MASTER CHAPTER',
+    meta: meta('Electromagnetic Induction', 'A visual masterclass in flux, induced fields, magnetic energy and modern applications', 'ink', {
+      kicker: 'THE INSTITUTE OF ADVANCED PHYSICS · MASTERCLASS EDITION',
       cover: false,
       coverStyle: 'minimal',
       toc: false,
       numberedHeadings: true,
       density: 'comfortable',
       pageNumbers: true,
-      footer: 'Electromagnetic Induction · Complete Revision Chapter',
+      footer: 'Advanced Physics Masterclass · Electromagnetic Induction',
     }),
     blocks: [
       BOX(
