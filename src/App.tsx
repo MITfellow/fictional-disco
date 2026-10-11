@@ -424,6 +424,20 @@ export default function App() {
               <div><span>2</span><strong>Refine</strong><small>Edit sections, diagrams and design in plain language.</small></div>
               <div><span>3</span><strong>Publish</strong><small>Download the PDF or save the complete project.</small></div>
             </div>
+            <div className="quick-start">
+              <div className="quick-head"><strong>Start with a complete example</strong><small>Choose one, or begin with your own idea.</small></div>
+              <div className="quick-grid">
+                <button type="button" onClick={() => { finishOnboarding(); void send('Create a natural visual study guide on electromagnetic induction with learning goals, clear diagrams, derivations, a worked example, exam traps and active recall.', []); }}>
+                  <b>Study guide</b><span>EMI with diagrams and recall</span><em>Physics</em>
+                </button>
+                <button type="button" onClick={() => { finishOnboarding(); void send('Create a polished natural project proposal with an executive summary, process diagram, timeline, pricing table and next steps.', []); }}>
+                  <b>Project proposal</b><span>Structured and presentation-ready</span><em>Business</em>
+                </button>
+                <button type="button" onClick={() => { finishOnboarding(); void send('Make a clean one-page revision sheet with key ideas, formulas, one visual, common mistakes and a self-check list.', []); }}>
+                  <b>Revision sheet</b><span>Compact one-page review</span><em>Study</em>
+                </button>
+              </div>
+            </div>
             <div className="onboarding-actions">
               <Button appearance="primary" size="large" onClick={finishOnboarding}>Start creating</Button>
               <Button appearance="secondary" size="large" as="a" href="/sample-electromagnetic-induction.pdf" target="_blank">View sample PDF</Button>
