@@ -50,7 +50,71 @@ export function buildScienceNotes(topic: ScienceTopic, opts: { theme?: ThemeName
     doc.meta.style = opts.style;
     doc.meta.font = opts.style === 'modern' ? 'sans' : 'serif';
   }
+  // Every built-in lesson includes an explicit learning path and retrieval
+  // practice. This turns attractive notes into something students can use.
+  const study = studyGuide(topic);
+  const introAt = Math.min(1, doc.blocks.length);
+  doc.blocks.splice(introAt, 0, ...study.opening);
+  doc.blocks.push(...study.closing);
   return doc;
+}
+
+
+const STUDY: Record<ScienceTopic, { objectives: string[]; checks: string[]; traps: string[] }> = {
+  projectile: {
+    objectives: ['Resolve launch velocity into horizontal and vertical components.', 'Derive time of flight, maximum height and range from constant-acceleration equations.', 'Interpret a trajectory graph and check limiting cases.'],
+    checks: ['Why can horizontal and vertical motion be solved independently?', 'At the apex, which velocity component is zero—and which is not?', 'Without calculating, compare the ranges at $30^\circ$ and $60^\circ$.'],
+    traps: ['Velocity is not zero at the apex.', 'The level-ground range formula does not apply when launch and landing heights differ.'],
+  },
+  forces: {
+    objectives: ['Isolate a body and draw every external force.', 'Choose useful axes and apply $\sum \vec F=m\vec a$ component by component.', 'Distinguish static from kinetic friction.'],
+    checks: ['Why is the normal force not always equal to $mg$?', 'Which way does friction point before you know the motion?', 'What changes in the equations at the threshold of slipping?'],
+    traps: ['Action–reaction forces act on different bodies.', 'Static friction is not automatically $\mu_sN$; that is its maximum value.'],
+  },
+  oscillations: {
+    objectives: ['Recognise the condition $a=-\omega^2x$ for SHM.', 'Connect displacement, velocity, acceleration and energy.', 'Use phase and period correctly.'],
+    checks: ['Where are speed and acceleration largest?', 'How does doubling mass change a spring’s period?', 'Why is total energy constant in ideal SHM?'],
+    traps: ['Acceleration is opposite to displacement, not necessarily opposite to velocity.', 'Amplitude and period are independent only for ideal linear SHM.'],
+  },
+  circuits: {
+    objectives: ['Apply Ohm’s law and Kirchhoff’s rules with consistent signs.', 'Reduce series and parallel resistor networks.', 'Relate current, voltage, power and energy.'],
+    checks: ['What is conserved at a junction?', 'Why is voltage common across parallel branches?', 'Which resistor dissipates more power in series?'],
+    traps: ['Current is not consumed by a component.', 'Equivalent resistance in parallel is smaller than the smallest branch resistance.'],
+  },
+  optics: {
+    objectives: ['Trace principal rays through lenses and mirrors.', 'Use a consistent sign convention in the imaging equation.', 'Connect ray diagrams with magnification.'],
+    checks: ['What happens to a ray through the optical centre?', 'When is an image virtual?', 'How can the sign of magnification identify orientation?'],
+    traps: ['A virtual image cannot be projected on a screen.', 'Always state the sign convention before substituting values.'],
+  },
+  induction: {
+    objectives: ['Relate magnetic flux change to induced emf.', 'Use Lenz’s law to determine current direction.', 'Connect Faraday’s law to generators and inductors.'],
+    checks: ['Can a strong constant magnetic field induce emf?', 'What does the minus sign in Faraday’s law mean?', 'How can flux change if field strength stays constant?'],
+    traps: ['Flux, not magnetic field alone, controls induced emf.', 'Lenz’s law opposes the change in flux, not necessarily the field itself.'],
+  },
+};
+
+function studyGuide(topic: ScienceTopic): { opening: Block[]; closing: Block[] } {
+  const x = STUDY[topic];
+  return {
+    opening: [
+      H(1, 'Learning goals'),
+      { id: uid(), type: 'list', items: x.objectives.map((text) => `[ ] ${text}`), checklist: true },
+      BOX('note', 'How to use these notes', 'Preview the diagram first, cover each worked solution and attempt it yourself, then answer the retrieval questions without looking back. Revisit any question you cannot explain aloud.'),
+    ],
+    closing: [
+      H(1, 'Active recall'),
+      P('Close the notes and answer these from memory. A strong answer should include the physical reason, not only a formula.'),
+      L(x.checks.map((q) => `**Question:** ${q}`), true),
+      BOX('warning', 'Common exam traps', undefined, [L(x.traps)]),
+      H(2, 'Final self-check'),
+      { id: uid(), type: 'list', checklist: true, items: [
+        '[ ] I can sketch and label the central diagram from memory.',
+        '[ ] I can derive the key result and state its assumptions.',
+        '[ ] I can solve a numerical example with units and a reasonableness check.',
+        '[ ] I can explain the topic in sixty seconds without reading.',
+      ] },
+    ],
+  };
 }
 
 // ---------------------------------------------------------------- projectile
