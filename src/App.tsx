@@ -344,9 +344,18 @@ export default function App() {
           <Tooltip content="AI settings" relationship="label">
             <ToolbarButton type="button" icon={<Settings20Regular />} onClick={() => setSettingsOpen(true)} />
           </Tooltip>
-          <Button as="a" appearance="primary" icon={<ArrowDownload20Regular />} href={pdfUrl ?? undefined} download={`${slug(doc.meta.title)}.pdf`} aria-disabled={!pdfUrl} className="download-btn">
-            Download
-          </Button>
+          <a
+            className={`native-download ${pdfUrl ? '' : 'disabled'}`}
+            href={pdfUrl ?? undefined}
+            download={`${slug(doc.meta.title)}.pdf`}
+            target="_blank"
+            rel="noopener"
+            aria-disabled={!pdfUrl}
+            onClick={(e) => { if (!pdfUrl) e.preventDefault(); }}
+          >
+            <ArrowDownload20Regular />
+            <span>Download PDF</span>
+          </a>
         </Toolbar>
       </header>
 

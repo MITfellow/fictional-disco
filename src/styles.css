@@ -57,8 +57,11 @@ body.resizing iframe, body.resizing canvas { pointer-events: none; }
 .top-tools { gap: 2px; flex-shrink: 0; }
 .top-tools svg { color: var(--colorNeutralForeground3); }
 .top-tools button:hover svg { color: var(--colorNeutralForeground1); }
-.download-btn { margin-left: 8px; border-radius: 8px !important; }
-.download-btn svg { color: inherit !important; }
+.native-download { margin-left: 8px; height: 32px; display: inline-flex; align-items: center; gap: 7px; padding: 0 13px; border-radius: 8px; background: var(--colorNeutralForeground1); color: var(--colorNeutralBackground1); font-size: 13px; font-weight: 600; text-decoration: none; white-space: nowrap; transition: transform 150ms ease, opacity 150ms ease, box-shadow 150ms ease; }
+.native-download svg { color: inherit !important; }
+.native-download:hover { transform: translateY(-1px); box-shadow: 0 5px 15px rgba(40, 36, 30, 0.16); }
+.native-download:active { transform: scale(0.97); }
+.native-download.disabled { opacity: 0.35; pointer-events: none; }
 
 /* -------------------------------------------------------------- workspace */
 .workspace { display: flex; min-height: 0; padding: 0 12px 12px; }
