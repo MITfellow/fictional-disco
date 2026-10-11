@@ -41,9 +41,12 @@ export function layoutPlot(b: PlotBlock, theme: PdfTheme, width: number): Scene 
   const fns = b.functions ?? [];
   const dataX: number[] = [];
   const dataY: number[] = [];
-  for (const d of b.data ?? []) for (const [x, y] of d.points) dataX.push(x), dataY.push(y);
-  for (const p of b.points ?? []) dataX.push(p.x), dataY.push(p.y);
-  for (const f of fns) if (f.domain) dataX.push(...f.domain);
+  // Values near asymptotes may still be finite JavaScript numbers while being
+  // far outside anything PDFKit can represent. Treat them as discontinuities.
+  const plottable = (n: number) => Number.isFinite(n) && Math.abs(n) <= 1e9;
+  for (const d of b.data ?? []) for (const [x, y] of d.points) if (plottable(x) && plottable(y)) (dataX.push(x), dataY.push(y));
+  for (const p of b.points ?? []) if (plottable(p.x) && plottable(p.y)) (dataX.push(p.x), dataY.push(p.y));
+  for (const f of fns) if (f.domain) dataX.push(...f.domain.filter(plottable));
 
   // parametric curves first (they define x extents)
   const par: Curve[] = [];
@@ -57,7 +60,7 @@ export function layoutPlot(b: PlotBlock, theme: PdfTheme, width: number): Scene 
       const t = t0 + ((t1 - t0) * k) / 360;
       const x = fx({ t });
       const y = fy({ t });
-      if (Number.isFinite(x) && Number.isFinite(y)) {
+      if (plottable(x) && plottable(y)) {
         pts.push([x, y]);
         dataX.push(x);
         dataY.push(y);
@@ -66,7 +69,7 @@ export function layoutPlot(b: PlotBlock, theme: PdfTheme, width: number): Scene 
     par.push({ pts, color: colorAt(fns.length + i, p.color), dashed: p.dashed, label: p.label });
   });
 
-  let [x0, x1] = b.xRange ?? (dataX.length ? [Math.min(...dataX), Math.max(...dataX)] : [-5, 5]);
+  let [x0, x1] = b.xRange?.every(plottable) ? b.xRange : dataX.length ? [Math.min(...dataX), Math.max(...dataX)] : [-5, 5];
   if (!b.xRange && dataX.length) {
     if (x0 === x1) (x0 -= 1), (x1 += 1);
     if (x0 > 0 && x0 < (x1 - x0) * 0.35) x0 = 0;
@@ -88,7 +91,7 @@ export function layoutPlot(b: PlotBlock, theme: PdfTheme, width: number): Scene 
     for (let k = 0; k <= N; k++) {
       const x = d0 + ((d1 - d0) * k) / N;
       const y = fn({ x });
-      pts.push(Number.isFinite(y) ? [x, y] : null);
+      pts.push(plottable(x) && plottable(y) ? [x, y] : null);
     }
     curves.push({ pts, color: colorAt(i, f.color), dashed: f.dashed, label: f.label });
   });
@@ -96,7 +99,7 @@ export function layoutPlot(b: PlotBlock, theme: PdfTheme, width: number): Scene 
 
   // ---- y range (robust against asymptotes)
   let y0: number, y1: number;
-  if (b.yRange) [y0, y1] = b.yRange;
+  if (b.yRange?.every(plottable)) [y0, y1] = b.yRange;
   else {
     const ys = [...dataY];
     for (const c of curves.slice(0, curves.length - par.length)) for (const p of c.pts) if (p) ys.push(p[1]);
