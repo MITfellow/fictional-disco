@@ -333,6 +333,35 @@ export function induction(): DocSpec {
       BOX('example', 'Mains frequency', '$100$ turns of area $0.050\\ \\mathrm{m^2}$ turning at $50\\ \\mathrm{Hz}$ in $0.20\\ \\mathrm{T}$: $\\omega = 314\\ \\mathrm{rad\\,s^{-1}}$, so $\\varepsilon_0 = NBA\\omega = 314\\ \\mathrm{V}$.'),
 
       // ------------------------------------------------------------ 10
+      H(1, 'Teacher viva: questions you must answer aloud'),
+      P('Practise these without looking at the formulas. Begin with the physical idea, state the relevant law, then give the mathematical relation with units and assumptions.'),
+      H(2, 'Rapid-fire conceptual questions'),
+      L([
+          '**Why is no current induced when a magnet is held still inside a coil?** Flux may be large, but $d\\Phi_B/dt=0$.',
+          '**What does the minus sign in Faraday’s law mean?** The induced effect opposes the *change* in linked flux; it expresses Lenz’s law and energy conservation.',
+          '**Can emf exist without current?** Yes. An open circuit can have induced emf, but current requires a closed conducting path.',
+          '**How can flux change if $B$ is constant?** Change area, orientation, or the fraction of the field intercepted by the loop.',
+          '**Why does a transformer require alternating current?** A steady primary current gives steady flux, so the secondary has no sustained induced emf.',
+          '**Why are transformer cores laminated?** Thin insulated sheets interrupt eddy-current loops and reduce heating.',
+          '**What sets the direction of motional emf?** The magnetic force $q\\vec v\\times\\vec B$, combined with Lenz’s law for the complete circuit.',
+          '**Where is energy stored in an inductor?** In its magnetic field, with $U=LI^2/2$ and density $u_B=B^2/(2\\mu)$.',
+          '**Why can current through an ideal inductor not jump instantly?** An instantaneous change would require infinite $dI/dt$ and therefore infinite back emf.',
+          '**At $t=\\tau$ in an RL growth circuit, what has happened?** Current reaches $1-e^{-1}=63.2\\%$ of its final value.',
+          '**Flux and emf in a generator are how far out of phase?** One quarter-cycle, or $\\pi/2$ radians.',
+          '**Does Lenz’s law oppose motion in every case?** It opposes the flux change; magnetic drag is the mechanical consequence when motion causes that change.',
+        ], true),
+      H(2, 'Exam-level numerical checklist'),
+      L([
+        '[ ] I write the flux linkage $N\\Phi_B$ before differentiating.',
+        '[ ] I convert centimetres to metres and milliseconds to seconds.',
+        '[ ] I separate emf magnitude from direction.',
+        '[ ] I state whether the circuit is open or closed before finding current.',
+        '[ ] I check dimensions: $\\mathrm{Wb/s}=\\mathrm{V}$ and $\\mathrm{H/\\Omega}=\\mathrm{s}$.',
+        '[ ] I test limiting cases such as $t=0$, $t\\to\\infty$, or $\\theta=90^\\circ$.',
+      ], false),
+      BOX('tip', 'A strong oral answer', 'Use this four-part pattern: **observation → law → equation → consequence**. Example: “The linked flux is decreasing; by Lenz’s law the coil reinforces the original field; Faraday’s law gives $|\\varepsilon|=N|d\\Phi/dt|$; therefore the induced current reverses when the motion reverses.”'),
+
+      // ------------------------------------------------------------ 11
       H(1, 'Summary'),
       TABLE(
         ['Quantity', 'Relation', 'SI unit'],
