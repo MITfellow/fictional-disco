@@ -3,7 +3,15 @@ import type { ReactNode } from 'react';
 import type { Scene } from './scene';
 
 export function SceneView({ scene, font, rich }: { scene: Scene; font: string | string[]; rich?: (text: string, size: number) => ReactNode }) {
-  const { width, height } = scene;
+  const rawW = scene.width;
+  const rawH = scene.height;
+  const safe = (n: number, fallback = 0) => Number.isFinite(n) ? Math.max(-1e6, Math.min(1e6, n)) : fallback;
+  const width = Math.max(1, safe(rawW, 1));
+  const height = Math.max(1, safe(rawH, 1));
+  // Provider-authored curves and field-line integration can occasionally
+  // diverge. Clamp SVG path numbers so one bad primitive never prevents the
+  // whole PDF from compiling.
+  const path = (d: string) => d.replace(/[-+]?(?:\d*\.\d+|\d+\.?)(?:e[-+]?\d+)?/gi, (token) => String(safe(Number(token))));
   return (
     <View style={{ width, height, position: 'relative' }}>
       <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ position: 'absolute', left: 0, top: 0 }}>
@@ -11,23 +19,23 @@ export function SceneView({ scene, font, rich }: { scene: Scene; font: string | 
           switch (s.kind) {
             case 'rect':
               return (
-                <Rect key={i} x={s.x} y={s.y} width={s.w} height={s.h} rx={s.rx ?? 0} ry={s.rx ?? 0} fill={s.fill ?? 'none'} stroke={s.stroke ?? 'none'} strokeWidth={s.sw ?? 0} strokeDasharray={s.dash} fillOpacity={s.opacity ?? 1} />
+                <Rect key={i} x={safe(s.x)} y={safe(s.y)} width={Math.max(0, safe(s.w))} height={Math.max(0, safe(s.h))} rx={Math.max(0, safe(s.rx ?? 0))} ry={Math.max(0, safe(s.rx ?? 0))} fill={s.fill ?? 'none'} stroke={s.stroke ?? 'none'} strokeWidth={s.sw ?? 0} strokeDasharray={s.dash} fillOpacity={s.opacity ?? 1} />
               );
             case 'circle':
-              return <Circle key={i} cx={s.cx} cy={s.cy} r={s.r} fill={s.fill ?? 'none'} stroke={s.stroke ?? 'none'} strokeWidth={s.sw ?? 0} fillOpacity={s.opacity ?? 1} />;
+              return <Circle key={i} cx={safe(s.cx)} cy={safe(s.cy)} r={Math.max(0, safe(s.r))} fill={s.fill ?? 'none'} stroke={s.stroke ?? 'none'} strokeWidth={s.sw ?? 0} fillOpacity={s.opacity ?? 1} />;
             case 'ellipse':
-              return <Ellipse key={i} cx={s.cx} cy={s.cy} rx={s.rx} ry={s.ry} fill={s.fill ?? 'none'} stroke={s.stroke ?? 'none'} strokeWidth={s.sw ?? 0} fillOpacity={s.opacity ?? 1} />;
+              return <Ellipse key={i} cx={safe(s.cx)} cy={safe(s.cy)} rx={Math.max(0, safe(s.rx))} ry={Math.max(0, safe(s.ry))} fill={s.fill ?? 'none'} stroke={s.stroke ?? 'none'} strokeWidth={s.sw ?? 0} fillOpacity={s.opacity ?? 1} />;
             case 'polygon':
               return (
-                <Polygon key={i} points={s.points.map((p) => p.join(',')).join(' ')} fill={s.fill ?? 'none'} stroke={s.stroke ?? 'none'} strokeWidth={s.sw ?? 0} fillOpacity={s.opacity ?? 1} strokeLinejoin="round" />
+                <Polygon key={i} points={s.points.map((p) => `${safe(p[0])},${safe(p[1])}`).join(' ')} fill={s.fill ?? 'none'} stroke={s.stroke ?? 'none'} strokeWidth={s.sw ?? 0} fillOpacity={s.opacity ?? 1} strokeLinejoin="round" />
               );
             case 'line':
-              return <Line key={i} x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} stroke={s.stroke} strokeWidth={s.sw ?? 1} strokeDasharray={s.dash} strokeOpacity={s.opacity ?? 1} />;
+              return <Line key={i} x1={safe(s.x1)} y1={safe(s.y1)} x2={safe(s.x2)} y2={safe(s.y2)} stroke={s.stroke} strokeWidth={s.sw ?? 1} strokeDasharray={s.dash} strokeOpacity={s.opacity ?? 1} />;
             case 'path':
               return (
                 <Path
                   key={i}
-                  d={s.d}
+                  d={path(s.d)}
                   fill={s.fill ?? 'none'}
                   stroke={s.stroke ?? 'none'}
                   strokeWidth={s.sw ?? 0}
@@ -45,10 +53,10 @@ export function SceneView({ scene, font, rich }: { scene: Scene; font: string | 
           key={i}
           style={{
             position: 'absolute',
-            left: l.x,
-            top: l.y,
-            width: l.w,
-            height: l.h,
+            left: safe(l.x),
+            top: safe(l.y),
+            width: Math.max(0, safe(l.w)),
+            height: Math.max(0, safe(l.h)),
             justifyContent: l.valign === 'top' ? 'flex-start' : l.valign === 'bottom' ? 'flex-end' : 'center',
             backgroundColor: l.bg,
             borderRadius: l.bg ? 3 : 0,
@@ -57,7 +65,7 @@ export function SceneView({ scene, font, rich }: { scene: Scene; font: string | 
           <Text
             style={{
               fontFamily: font,
-              fontSize: l.size,
+              fontSize: Math.max(1, safe(l.size, 9)),
               lineHeight: 1.3,
               color: l.color,
               fontWeight: l.weight ?? 400,
