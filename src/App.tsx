@@ -301,29 +301,29 @@ export default function App() {
             e.target.value = '';
           }}
         />
-        <Toolbar className="top-tools" size="small">
+        <Toolbar className="top-tools" size="small" onClickCapture={(e) => e.preventDefault()}>
           <Tooltip content="Open complete project" relationship="label">
-            <ToolbarButton icon={<ArrowUpload20Regular />} onClick={() => projectInputRef.current?.click()} />
+            <ToolbarButton type="button" icon={<ArrowUpload20Regular />} onClick={() => projectInputRef.current?.click()} />
           </Tooltip>
           <Tooltip content="Save complete project" relationship="label">
-            <ToolbarButton icon={<Save20Regular />} onClick={saveProject} />
+            <ToolbarButton type="button" icon={<Save20Regular />} onClick={saveProject} />
           </Tooltip>
           <Tooltip content="New document" relationship="label">
-            <ToolbarButton icon={<DocumentAdd20Regular />} onClick={newDoc} />
+            <ToolbarButton type="button" icon={<DocumentAdd20Regular />} onClick={newDoc} />
           </Tooltip>
           <Tooltip content="Undo (Ctrl+Z)" relationship="label">
-            <ToolbarButton icon={<ArrowUndo20Regular />} disabled={!past.length} onClick={() => dispatch({ type: 'undo' })} />
+            <ToolbarButton type="button" icon={<ArrowUndo20Regular />} disabled={!past.length} onClick={() => dispatch({ type: 'undo' })} />
           </Tooltip>
           <Tooltip content="Redo (Ctrl+Shift+Z)" relationship="label">
-            <ToolbarButton icon={<ArrowRedo20Regular />} disabled={!future.length} onClick={() => dispatch({ type: 'redo' })} />
+            <ToolbarButton type="button" icon={<ArrowRedo20Regular />} disabled={!future.length} onClick={() => dispatch({ type: 'redo' })} />
           </Tooltip>
           <Tooltip content={dark ? 'Light mode' : 'Dark mode'} relationship="label">
-            <ToolbarButton icon={dark ? <WeatherSunny20Regular /> : <WeatherMoon20Regular />} onClick={() => setDark(!dark)} />
+            <ToolbarButton type="button" icon={dark ? <WeatherSunny20Regular /> : <WeatherMoon20Regular />} onClick={() => setDark(!dark)} />
           </Tooltip>
           <Tooltip content="AI settings" relationship="label">
-            <ToolbarButton icon={<Settings20Regular />} onClick={() => setSettingsOpen(true)} />
+            <ToolbarButton type="button" icon={<Settings20Regular />} onClick={() => setSettingsOpen(true)} />
           </Tooltip>
-          <Button appearance="primary" icon={<ArrowDownload20Regular />} onClick={download} disabled={!pdfData} className="download-btn">
+          <Button type="button" appearance="primary" icon={<ArrowDownload20Regular />} onClick={download} disabled={!pdfData} className="download-btn">
             Download
           </Button>
         </Toolbar>
@@ -373,14 +373,14 @@ export default function App() {
             </span>
             <div className="row gap4 preview-tools">
               <Tooltip content="Zoom out" relationship="label">
-                <Button size="small" appearance="subtle" icon={<ZoomOut20Regular />} onClick={() => zoomStep(-1)} />
+                <Button type="button" size="small" appearance="subtle" icon={<ZoomOut20Regular />} onClick={() => zoomStep(-1)} />
               </Tooltip>
               <Caption1 className="zoom-label">{Math.round(info.scale * 100)}%</Caption1>
               <Tooltip content="Zoom in" relationship="label">
-                <Button size="small" appearance="subtle" icon={<ZoomIn20Regular />} onClick={() => zoomStep(1)} />
+                <Button type="button" size="small" appearance="subtle" icon={<ZoomIn20Regular />} onClick={() => zoomStep(1)} />
               </Tooltip>
               <Tooltip content="Fit to width" relationship="label">
-                <Button size="small" appearance={zoom === 'fit' ? 'secondary' : 'subtle'} icon={<ArrowFit20Regular />} onClick={() => setZoom('fit')} />
+                <Button type="button" size="small" appearance={zoom === 'fit' ? 'secondary' : 'subtle'} icon={<ArrowFit20Regular />} onClick={() => setZoom('fit')} />
               </Tooltip>
             </div>
           </header>
