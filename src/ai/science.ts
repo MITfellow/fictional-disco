@@ -2,6 +2,7 @@
 import type { Block, DocSpec, FigElement, ThemeName } from '../types';
 import { DEFAULT_META, today, uid } from '../normalize';
 import { induction } from './induction';
+import { alternatingCurrent } from './alternatingCurrent';
 
 export const H = (level: 1 | 2 | 3, text: string): Block => ({ id: uid(), type: 'heading', level, text });
 export const P = (text: string, lead = false): Block => ({ id: uid(), type: 'paragraph', text, lead });
@@ -25,10 +26,11 @@ export const meta = (title: string, subtitle: string, theme: ThemeName, extra: P
   ...extra,
 });
 
-export type ScienceTopic = 'projectile' | 'forces' | 'oscillations' | 'circuits' | 'optics' | 'induction';
+export type ScienceTopic = 'projectile' | 'forces' | 'oscillations' | 'circuits' | 'optics' | 'induction' | 'alternatingCurrent';
 
 export function detectScienceTopic(text: string): ScienceTopic | null {
   const t = text.toLowerCase();
+  if (/alternating current|\bac\b|phasor|reactance|series lcr|power factor|transformer|resonance circuit/.test(t)) return 'alternatingCurrent';
   if (/induction|faraday|lenz|inductance|inductor|\bemi\b|eddy|generator|magnetic flux|solenoid/.test(t)) return 'induction';
   if (/projectile|kinematic|trajector|free fall|motion in (two|2) dimensions|parabolic/.test(t)) return 'projectile';
   if (/newton|force|friction|incline|free[- ]body|dynamics|tension/.test(t)) return 'forces';
@@ -43,7 +45,7 @@ export function isScienceRequest(text: string) {
 }
 
 export function buildScienceNotes(topic: ScienceTopic, opts: { theme?: ThemeName; style?: 'modern' | 'academic' } = {}): DocSpec {
-  const build = { projectile, forces, oscillations, circuits, optics, induction }[topic];
+  const build = { projectile, forces, oscillations, circuits, optics, induction, alternatingCurrent }[topic];
   const doc = build();
   if (opts.theme) doc.meta.theme = opts.theme;
   if (opts.style) {
@@ -55,7 +57,9 @@ export function buildScienceNotes(topic: ScienceTopic, opts: { theme?: ThemeName
   const study = studyGuide(topic);
   const introAt = Math.min(1, doc.blocks.length);
   doc.blocks.splice(introAt, 0, ...study.opening);
-  doc.blocks.push(...study.closing);
+  // The long AC masterclass already closes with its own synthesis material;
+  // appending the generic worksheet can destabilise React-PDF pagination.
+  if (topic !== 'alternatingCurrent') doc.blocks.push(...study.closing);
   return doc;
 }
 
@@ -90,6 +94,11 @@ const STUDY: Record<ScienceTopic, { objectives: string[]; checks: string[]; trap
     objectives: ['Relate magnetic flux change to induced emf.', 'Use Lenz’s law to determine current direction.', 'Connect Faraday’s law to generators and inductors.'],
     checks: ['Can a strong constant magnetic field induce emf?', 'What does the minus sign in Faraday’s law mean?', 'How can flux change if field strength stays constant?'],
     traps: ['Flux, not magnetic field alone, controls induced emf.', 'Lenz’s law opposes the change in flux, not necessarily the field itself.'],
+  },
+  alternatingCurrent: {
+    objectives: ['Interpret sinusoidal AC with waveforms and phasors.', 'Explain resistor, inductor and capacitor phase relations from first principles.', 'Solve series LCR, resonance, power-factor and transformer problems.'],
+    checks: ['Why is RMS more useful than the cycle average?', 'Can individual reactive voltages exceed the supply at resonance?', 'Why does high-voltage transmission reduce power loss?'],
+    traps: ['Use RMS consistently in power calculations.', 'Add AC voltages as phasors, not ordinary scalars.', 'A transformer requires changing flux and therefore does not operate on steady DC.'],
   },
 };
 

@@ -3,7 +3,7 @@ import type { AiSettings, Asset, Block, ChatMessage, DocSpec } from './types';
 import { buildScienceNotes } from './ai/science';
 import { normalizeDoc, uid } from './normalize';
 
-const STATE_KEY = 'fluent-pdf-studio.state.v3'; // loads the complete EMI oral-exam chapter requested for this workspace
+const STATE_KEY = 'fluent-pdf-studio.state.v4'; // loads the complete Class XII alternating-current masterclass
 const SETTINGS_KEY = 'fluent-pdf-studio.settings.v1';
 
 export interface StudioState {
@@ -120,7 +120,7 @@ function load(): StudioState {
   } catch {
     /* ignore corrupt state */
   }
-  return { doc: buildScienceNotes('induction'), assets: {}, messages: [welcomeMessage()], past: [], future: [] };
+  return { doc: buildScienceNotes('alternatingCurrent'), assets: {}, messages: [welcomeMessage()], past: [], future: [] };
 }
 
 export function useStudio() {
