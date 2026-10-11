@@ -9,9 +9,14 @@ const plot = (p: Omit<Extract<Block, { type: 'plot' }>, 'id' | 'type'>): Block =
 export function induction(): DocSpec {
   return {
     meta: meta('Electromagnetic Induction', 'Faraday’s law, Lenz’s law, inductance and the AC generator', 'ink', {
-      kicker: 'Physics · Chapter 6',
+      kicker: 'PHYSICS · ORAL EXAM MASTER CHAPTER',
+      cover: false,
+      coverStyle: 'minimal',
+      toc: false,
+      numberedHeadings: true,
+      density: 'comfortable',
       pageNumbers: true,
-      footer: 'Electromagnetic Induction',
+      footer: 'Electromagnetic Induction · Complete Revision Chapter',
     }),
     blocks: [
       BOX(

@@ -101,6 +101,7 @@ export default function App() {
   const [onboarding, setOnboarding] = useState(() => localStorage.getItem('fluent-pdf-studio.onboarding.v1') !== 'done');
   const [zoom, setZoom] = useState<Zoom>('fit');
   const [pdfData, setPdfData] = useState<ArrayBuffer | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [compiling, setCompiling] = useState(false);
   const [compileError, setCompileError] = useState<string | null>(null);
   const [info, setInfo] = useState({ pages: 0, current: 1, scale: 1 });
@@ -141,6 +142,18 @@ export default function App() {
       clearTimeout(t);
     };
   }, [doc, assets]);
+
+  // Keep a native downloadable URL mounted in the DOM. This works reliably in
+  // sandboxed previews where synthetic anchor clicks may be blocked.
+  useEffect(() => {
+    if (!pdfData) {
+      setPdfUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(new Blob([pdfData.slice(0)], { type: 'application/pdf' }));
+    setPdfUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [pdfData]);
 
   // ------------------------------------------------------------ actions
   const newDoc = useCallback(() => {
@@ -331,7 +344,7 @@ export default function App() {
           <Tooltip content="AI settings" relationship="label">
             <ToolbarButton type="button" icon={<Settings20Regular />} onClick={() => setSettingsOpen(true)} />
           </Tooltip>
-          <Button type="button" appearance="primary" icon={<ArrowDownload20Regular />} onClick={download} disabled={!pdfData} className="download-btn">
+          <Button as="a" appearance="primary" icon={<ArrowDownload20Regular />} href={pdfUrl ?? undefined} download={`${slug(doc.meta.title)}.pdf`} aria-disabled={!pdfUrl} className="download-btn">
             Download
           </Button>
         </Toolbar>
