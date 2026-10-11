@@ -13,11 +13,17 @@ export interface EngineResult {
 }
 
 const THEME_WORDS: [RegExp, ThemeName][] = [
+  [/\b(ink|inky|navy ink)\b/, 'ink'],
+  [/\b(sage|olive|forest|natural green)\b/, 'sage'],
+  [/\b(clay|terracotta|earthy?|brick)\b/, 'clay'],
+  [/\b(stone|taupe|warm gr[ae]y)\b/, 'stone'],
+  [/\b(lake|teal|sea)\b/, 'lake'],
+  [/\b(plum|mauve|wine)\b/, 'plum'],
   [/\b(ocean|blue|azure|sky)\b/, 'ocean'],
   [/\b(emerald|green|nature|eco|mint)\b/, 'emerald'],
   [/\b(sunset|orange|warm|amber)\b/, 'sunset'],
   [/\b(royal|purple|violet|lavender)\b/, 'royal'],
-  [/\b(graphite|gr[ae]y|black|mono(chrome)?|minimal|neutral|corporate)\b/, 'graphite'],
+  [/\b(graphite|gr[ae]y|neutral|corporate)\b/, 'graphite'],
   [/\b(rose|pink|red|crimson)\b/, 'rose'],
   [/\b(midnight|indigo|navy|dark)\b/, 'midnight'],
 ];
@@ -386,7 +392,17 @@ function applyStyleEdits(p: string, raw: string, doc: DocSpec, changes: string[]
   else if (/\bsans(-serif)?\b/.test(p) && m.font !== 'sans') ((m.font = 'sans'), changes.push('Font → sans'));
   else if (/\b(monospace|mono font|typewriter)\b/.test(p) && m.font !== 'mono') ((m.font = 'mono'), changes.push('Font → mono'));
   if (/\bacademic|scientific style|journal|paper style\b/.test(p) && m.style !== 'academic') ((m.style = 'academic'), (m.font = 'serif'), changes.push('Academic style'));
-  else if (/\bmodern( style)?\b/.test(p) && m.style === 'academic') ((m.style = 'modern'), changes.push('Modern style'));
+  else if (/\bminimal( style| design| layout)?\b|\bsimple (design|style|layout)\b|\bclean (design|style|layout)\b/.test(p) && !/cover/.test(p) && m.style !== 'minimal') ((m.style = 'minimal'), changes.push('Minimal style'));
+  else if (/\bmodern( style)?\b/.test(p) && m.style !== 'modern') ((m.style = 'modern'), changes.push('Modern style'));
+  if (/\b(cream|sepia|old paper|warm paper)\b/.test(p) && m.paper !== 'cream') ((m.paper = 'cream'), changes.push('Paper → cream'));
+  else if (/\b(pure )?white (paper|page|background)\b/.test(p) && m.paper !== 'white') ((m.paper = 'white'), changes.push('Paper → white'));
+  else if (/\bnatural (paper|page)\b/.test(p) && m.paper) ((m.paper = 'natural'), changes.push('Paper → natural'));
+  if (/\b(vivid|bright|bold|vibrant|saturated) colou?rs?\b/.test(p) && m.colors !== 'vivid') ((m.colors = 'vivid'), changes.push('Colours → vivid'));
+  else if (/\b(black and white|black & white|grayscale|greyscale|monochrome|no colou?rs?)\b/.test(p) && m.colors !== 'mono') ((m.colors = 'mono'), changes.push('Colours → mono'));
+  else if (/\b(soft|muted|calm|natural|gentle) colou?rs?\b/.test(p) && m.colors) ((m.colors = 'natural'), changes.push('Colours → natural'));
+  if (/\b(compact|dense|tight|smaller spacing|less spacing)\b/.test(p) && m.density !== 'compact') ((m.density = 'compact'), changes.push('Spacing → compact'));
+  else if (/\b(airy|spacious|more (white ?space|spacing|space)|bigger spacing|roomy|breathing)\b/.test(p) && m.density !== 'airy') ((m.density = 'airy'), changes.push('Spacing → airy'));
+  else if (/\b(normal|comfortable|default) spacing\b/.test(p) && m.density) ((m.density = 'comfortable'), changes.push('Spacing → comfortable'));
   const cs = /\b(orbits?|waves?|grid|gradient|minimal)\s+cover\b/.exec(p) ?? /\bcover\s+(?:style\s+)?(orbits?|waves?|grid|gradient|minimal)\b/.exec(p);
   if (cs) {
     const v = cs[1].replace(/s$/, '') as string;

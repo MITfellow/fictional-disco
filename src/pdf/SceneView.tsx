@@ -1,4 +1,4 @@
-import { Circle, Ellipse, Line, Path, Polygon, Rect, Svg, Text, View } from '@react-pdf/renderer';
+import { Circle, Ellipse, Line, Path, Polygon, Rect, Svg, Text, View } from './prim';
 import type { ReactNode } from 'react';
 import type { Scene } from './scene';
 

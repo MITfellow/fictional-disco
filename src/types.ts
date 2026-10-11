@@ -10,10 +10,19 @@ export type ThemeName =
   | 'royal'
   | 'graphite'
   | 'rose'
-  | 'midnight';
+  | 'midnight'
+  | 'ink'
+  | 'sage'
+  | 'clay'
+  | 'stone'
+  | 'lake'
+  | 'plum';
 
 export type FontName = 'sans' | 'serif' | 'mono';
-export type DocStyle = 'modern' | 'academic';
+export type DocStyle = 'modern' | 'academic' | 'minimal';
+export type PaperTone = 'natural' | 'cream' | 'white';
+export type ColorMode = 'natural' | 'vivid' | 'mono';
+export type Density = 'compact' | 'comfortable' | 'airy';
 export type CoverStyle = 'gradient' | 'orbits' | 'waves' | 'grid' | 'minimal';
 export type PageSize = 'A4' | 'LETTER' | 'LEGAL' | 'A5';
 export type Orientation = 'portrait' | 'landscape';
@@ -38,6 +47,9 @@ export interface DocMeta {
   style?: DocStyle;
   coverStyle?: CoverStyle;
   kicker?: string; // small label above the title, e.g. "PHYSICS · LECTURE NOTES"
+  paper?: PaperTone; // page colour (default natural: soft warm off-white)
+  colors?: ColorMode; // colour grading (default natural: muted, eye-friendly)
+  density?: Density; // spacing / type size (default comfortable)
 }
 
 export interface BaseBlock {

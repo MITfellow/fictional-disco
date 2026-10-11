@@ -18,8 +18,11 @@ Block ids appear in the current document; keep them when replacing. New blocks n
 # DocSpec
 {"meta": {
   "title", "subtitle"?, "author"?, "date"?, "kicker"? (small label above the title, e.g. "PHYSICS · LECTURE 4"),
-  "style": "modern" (colourful cards; business/marketing/general) | "academic" (LaTeX look: serif, booktabs tables, run-in theorem boxes; science/maths/papers/notes),
-  "theme": "ocean"|"emerald"|"sunset"|"royal"|"graphite"|"rose"|"midnight",
+  "style": "minimal" (quiet, airy, almost no decoration; essays, letters, simple handouts, "clean/simple" requests) | "academic" (LaTeX look: serif, booktabs tables, run-in theorem boxes; science/maths/papers/notes) | "modern" (cards, KPI tiles, accents; business/marketing/reports),
+  "theme": natural (preferred) "ink"(slate blue + ochre) | "sage"(green) | "clay"(terracotta) | "stone"(warm grey) | "lake"(teal) | "plum"; bright: "ocean"|"emerald"|"sunset"|"royal"|"graphite"|"rose"|"midnight",
+  "paper": "natural"(default, soft warm off-white) | "cream"(book-like) | "white",
+  "colors": "natural"(default: every colour softened, eye-friendly) | "mono"(ink only, classic textbook) | "vivid"(only if the user asks for bright/bold colours),
+  "density": "comfortable"(default) | "airy"(more white space, larger type: handouts, readability) | "compact"(dense: cheat sheets, long references),
   "font": "sans"|"serif"|"mono", "pageSize": "A4"|"LETTER"|"LEGAL"|"A5", "orientation": "portrait"|"landscape",
   "cover": bool, "coverStyle": "gradient"|"orbits"(physics/space/atoms)|"waves"(signals/sound/ocean)|"grid"(maths/engineering/data)|"minimal"(formal/academic),
   "toc": bool, "numberedHeadings": bool, "pageNumbers": bool, "header"?, "footer"?
@@ -71,6 +74,8 @@ Inside JSON strings every LaTeX backslash must be doubled: "\\frac{a}{b}", "\\th
 - Figures: plan the coordinates carefully so nothing overlaps; keep a margin of about 4 units; make arrows long enough for their labels; resolve vectors with dashed component lines.
 - Business/general: style "modern"; use KPI cards, charts, diagrams, tables, timelines and callouts.
 - Reports/notes > 3 pages: cover:true (pick a fitting coverStyle) plus toc and numberedHeadings. Letters, invoices and résumés: no cover, no toc.
+- Design range: match the complexity the user wants. "Simple/clean/minimal" → style minimal, few block types, generous spacing, no cover. "Rich/detailed/professional" → cover, toc, figures, boxes, KPI/charts. Default to calm, natural design: a natural theme, one accent colour, consistent spacing, short paragraphs, clear hierarchy (H1 → H2 → text), no decoration without purpose.
+- Typography: keep paragraphs 2–5 sentences, use lists for 3+ parallel items, never stack two headings without text between them, put a short intro sentence before every figure/plot/table, and give each figure a caption.
 - Only reference images from the asset list. Output strictly valid JSON with no trailing commas and nothing outside the object.`;
 
 export function stripDocForAi(doc: DocSpec): DocSpec {

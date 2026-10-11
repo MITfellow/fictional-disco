@@ -131,7 +131,7 @@ function quarters(rand: () => number, base = 100, n = 6) {
 const meta = (title: string, extra: Partial<DocSpec['meta']> = {}): DocSpec['meta'] => ({ ...DEFAULT_META, title, date: today(), ...extra });
 
 // ------------------------------------------------------------------ report
-export function buildReport(topic: string, theme: ThemeName = 'ocean'): DocSpec {
+export function buildReport(topic: string, theme: ThemeName = 'ink'): DocSpec {
   const T = titleCase(topic);
   const r = seeded(topic);
   const rev = quarters(r, 120 + Math.round(r() * 200));
@@ -192,7 +192,7 @@ export function buildReport(topic: string, theme: ThemeName = 'ocean'): DocSpec 
 }
 
 // ---------------------------------------------------------------- proposal
-export function buildProposal(topic: string, theme: ThemeName = 'royal'): DocSpec {
+export function buildProposal(topic: string, theme: ThemeName = 'plum'): DocSpec {
   const T = titleCase(topic);
   return {
     meta: meta(`Proposal: ${T}`, { subtitle: `A clear plan, timeline and investment summary for ${topic}`, author: 'Your Company', cover: true, toc: false, theme, footer: 'Proposal · Valid for 30 days' }),
@@ -234,7 +234,7 @@ export function buildProposal(topic: string, theme: ThemeName = 'royal'): DocSpe
 }
 
 // ------------------------------------------------------------------ resume
-export function buildResume(name: string, role: string, theme: ThemeName = 'graphite'): DocSpec {
+export function buildResume(name: string, role: string, theme: ThemeName = 'stone'): DocSpec {
   return {
     meta: meta(titleCase(name), { subtitle: role, cover: false, toc: false, theme, pageNumbers: false, date: undefined }),
     blocks: [
@@ -267,7 +267,7 @@ export function buildResume(name: string, role: string, theme: ThemeName = 'grap
 }
 
 // ----------------------------------------------------------------- invoice
-export function buildInvoice(client: string, theme: ThemeName = 'emerald'): DocSpec {
+export function buildInvoice(client: string, theme: ThemeName = 'sage'): DocSpec {
   const no = `INV-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 900) + 100)}`;
   return {
     meta: meta(`Invoice ${no}`, { subtitle: `Billed to ${titleCase(client)}`, author: 'Your Company LLC', cover: false, toc: false, theme, footer: 'Thank you for your business!' }),
@@ -298,7 +298,7 @@ export function buildInvoice(client: string, theme: ThemeName = 'emerald'): DocS
 }
 
 // ------------------------------------------------------------------ letter
-export function buildLetter(topic: string, theme: ThemeName = 'graphite'): DocSpec {
+export function buildLetter(topic: string, theme: ThemeName = 'stone'): DocSpec {
   return {
     meta: meta(titleCase(topic), { cover: false, toc: false, theme, font: 'serif', pageNumbers: false }),
     blocks: [
@@ -315,7 +315,7 @@ export function buildLetter(topic: string, theme: ThemeName = 'graphite'): DocSp
 }
 
 // ----------------------------------------------------------------- meeting
-export function buildMeeting(topic: string, theme: ThemeName = 'midnight'): DocSpec {
+export function buildMeeting(topic: string, theme: ThemeName = 'lake'): DocSpec {
   return {
     meta: meta(`Meeting Notes: ${titleCase(topic)}`, { subtitle: 'Weekly sync · 45 minutes · Conference Room B / Teams', cover: false, theme, footer: 'Distributed to all attendees' }),
     blocks: [
@@ -349,7 +349,7 @@ export function buildMeeting(topic: string, theme: ThemeName = 'midnight'): DocS
 }
 
 // ------------------------------------------------------------------ study
-export function buildStudyGuide(topic: string, theme: ThemeName = 'sunset'): DocSpec {
+export function buildStudyGuide(topic: string, theme: ThemeName = 'clay'): DocSpec {
   const T = titleCase(topic);
   return {
     meta: meta(`${T}: Study Guide`, { subtitle: 'Key concepts, visual summaries and practice questions', author: 'Learning Lab', cover: true, toc: true, theme, numberedHeadings: true }),
@@ -377,7 +377,7 @@ export function buildStudyGuide(topic: string, theme: ThemeName = 'sunset'): Doc
 }
 
 // ------------------------------------------------------------ project plan
-export function buildProjectPlan(topic: string, theme: ThemeName = 'ocean'): DocSpec {
+export function buildProjectPlan(topic: string, theme: ThemeName = 'ink'): DocSpec {
   const T = titleCase(topic);
   return {
     meta: meta(`${T}: Project Plan`, { subtitle: 'Objectives, scope, schedule, team and risks', author: 'Project Management Office', cover: true, toc: true, theme, numberedHeadings: true, header: `${T} — Project Plan` }),
@@ -418,7 +418,7 @@ export function buildProjectPlan(topic: string, theme: ThemeName = 'ocean'): Doc
 }
 
 // ---------------------------------------------------------------- article
-export function buildArticle(topic: string, theme: ThemeName = 'ocean'): DocSpec {
+export function buildArticle(topic: string, theme: ThemeName = 'ink'): DocSpec {
   const T = titleCase(topic);
   return {
     meta: meta(T, { subtitle: `An illustrated guide to ${topic}`, author: 'Fluent PDF Studio', cover: false, toc: false, theme }),
@@ -452,7 +452,7 @@ export function buildWelcome(): DocSpec {
     meta: meta('Welcome to Fluent PDF Studio', {
       subtitle: 'Describe a document. The AI writes, draws and typesets it as a real vector PDF.',
       author: 'Fluent PDF Studio',
-      theme: 'ocean',
+      theme: 'ink',
       cover: false,
       font: 'serif',
       style: 'academic',
@@ -497,14 +497,14 @@ export function buildWelcome(): DocSpec {
         ],
         caption: 'A mass–spring system drawn from simple primitives. The AI also has springs, vectors, inclines, pulleys, circuit parts, lenses, field lines, angles and dimensions.',
       } as Block,
-      { id: uid(), type: 'box', variant: 'tip', title: 'Try asking', text: '“Lecture notes on projectile motion with a trajectory diagram and a worked example” · “A lab report on measuring $g$ with a pendulum” · “Add a circuit diagram with two resistors in parallel” · “Make it landscape with a cover page”', blocks: [] },
+      { id: uid(), type: 'box', variant: 'tip', title: 'Try asking', text: '“Lecture notes on projectile motion with a trajectory diagram and a worked example” · “A lab report on measuring $g$ with a pendulum” · “Add a circuit diagram with two resistors in parallel” · “Make it minimal with airy spacing” · “Use cream paper and black and white colours”', blocks: [] },
       H(1, 'Charts, tables and business layouts too'),
       { id: uid(), type: 'chart', kind: 'bar', title: 'Sample: documents created per month', labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'], series: [{ name: 'Notes', values: [12, 19, 24, 31, 38, 46] }, { name: 'Reports', values: [8, 11, 15, 14, 21, 27] }] },
       { id: uid(), type: 'table', headers: ['Capability', 'Examples'], rows: [
         ['Science', 'Equations, step-by-step derivations, plots, free-body, circuit and ray diagrams'],
         ['Structure', 'Definition, theorem, law, example and solution boxes, numbered headings, contents'],
         ['Visuals', 'Flowcharts, mind maps, timelines, 7 chart types, your own images'],
-        ['Design', 'Modern and academic styles, 7 colour themes, cover pages, headers and footers'],
+        ['Design', 'Minimal, academic and modern styles; natural paper and calm colours; compact to airy spacing; cover pages'],
       ] },
     ],
   };

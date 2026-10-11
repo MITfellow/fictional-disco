@@ -1,4 +1,4 @@
-import { G, Line, Path, Rect, Svg, Text, View } from '@react-pdf/renderer';
+import { G, Line, Path, Rect, Svg, Text, View } from './prim';
 import type { ReactNode } from 'react';
 import { texToTree, type MathNode } from './mathjax';
 import { MONO } from './fonts';

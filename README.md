@@ -16,7 +16,12 @@ An AI chatbot that designs and compiles real, vector PDFs while you watch. You c
 - **Images:** attach, paste or drag images into the chat to place them in the document.
 - **7 document themes:** Ocean, Emerald, Sunset, Royal, Graphite, Rose and Midnight.
 - **Preview:** rendered with pdf.js into crisp canvases (no flicker), with zoom, fit-width and fit-page modes, page tracking and open-in-tab.
-- Minimal UI: chat, live PDF, undo/redo, new document, dark mode, a resizable split view, and autosave to localStorage.
+- **Natural, eye-friendly design.** Every colour on the page is graded so it feels like print: white becomes a soft warm paper tone, cold greys become warm greys, black becomes soft ink, and loud hues are calmed. Six natural themes are included (Ink, Sage, Clay, Stone, Lake and Plum). Each document can set:
+  - `paper`: natural, cream or white;
+  - `colors`: natural, mono or vivid;
+  - `density`: compact, comfortable or airy, which changes margins, type size, line height and spacing.
+- **Any level of design.** `minimal` is a quiet layout with almost no decoration, `academic` gives a LaTeX look, and `modern` uses cards, KPI tiles and accents. The AI picks the level that fits the request, and you can change it in plain words (*make it minimal with airy spacing*, *cream paper*, *black and white*).
+- **Calm UI.** Warm neutral surfaces, one quiet ink accent, outline icons, chat on the left and the live PDF on the right, plus undo/redo, a new-document button, warm dark mode and autosave.
 
 ## AI engines
 

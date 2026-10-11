@@ -1,31 +1,17 @@
 import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent } from 'react';
-import { Avatar, Badge, Button, Caption1, Spinner, Text, Textarea, Tooltip } from '@fluentui/react-components';
-import {
-  Attach20Regular,
-  Building20Regular,
-  ChartMultiple20Regular,
-  ChevronDown16Regular,
-  Dismiss16Regular,
-  Key20Regular,
-  Lightbulb20Regular,
-  Person24Filled,
-  Timeline20Regular,
-  Book20Regular,
-  Send24Filled,
-  Sparkle20Filled,
-  Stop24Filled,
-} from '@fluentui/react-icons';
+import { Button, Caption1, Spinner, Tooltip } from '@fluentui/react-components';
+import { ArrowUp20Filled, Attach20Regular, ChevronDown12Regular, Dismiss16Regular, Stop20Filled } from '@fluentui/react-icons';
 import type { Asset, ChatMessage } from '../types';
 import { Markdown } from './Markdown';
 import { fileToAsset } from '../images';
 
+// From the simplest design to the richest one.
 const SUGGESTIONS = [
-  { icon: <Timeline20Regular />, title: 'Projectile motion', prompt: 'Create physics lecture notes on projectile motion with equations, a trajectory diagram, a plot and a worked example' },
-  { icon: <Lightbulb20Regular />, title: 'DC circuits', prompt: "Make notes on DC circuits and Ohm's law with a circuit diagram and I–V graph" },
-  { icon: <Book20Regular />, title: 'Simple harmonic motion', prompt: 'Write notes on simple harmonic motion: springs, pendulum, energy plots' },
-  { icon: <Timeline20Regular />, title: 'Thin lenses', prompt: 'Create optics notes on thin lenses with a ray diagram and the lens equation' },
-  { icon: <ChartMultiple20Regular />, title: 'Annual report', prompt: 'Create an annual report about renewable energy with charts, KPIs and a roadmap' },
-  { icon: <Building20Regular />, title: 'Business proposal', prompt: 'Write a proposal for a website redesign with pricing and timeline' },
+  { label: 'Simple one-page handout on Newton’s laws', prompt: 'Make a simple, clean one-page handout on Newton’s three laws. Minimal style, airy spacing.' },
+  { label: 'Projectile motion lecture notes', prompt: 'Create physics lecture notes on projectile motion with equations, a trajectory diagram, a plot and a worked example' },
+  { label: 'Ohm’s law with circuit diagram', prompt: "Make notes on DC circuits and Ohm's law with a circuit diagram and I–V graph" },
+  { label: 'Lab report: measuring g with a pendulum', prompt: 'Write a lab report on measuring g with a simple pendulum: aim, theory, method, data table, graph of T² against L, error analysis and conclusion' },
+  { label: 'Detailed annual report with cover', prompt: 'Create a detailed annual report about renewable energy with a cover page, contents, charts, KPIs and a roadmap' },
 ];
 
 interface Props {
@@ -92,7 +78,7 @@ export function ChatPanel({ messages, assets, busy, progress, engineLabel, onSen
     if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
   };
 
-  const showSuggestions = messages.filter((m) => m.role === 'user').length === 0;
+  const userCount = messages.filter((m) => m.role === 'user').length;
 
   return (
     <section
@@ -107,136 +93,98 @@ export function ChatPanel({ messages, assets, busy, progress, engineLabel, onSen
       onDrop={onDrop}
     >
       <header className="panel-head">
-        <div className="panel-title">
-          <span className="ai-orb">
-            <Sparkle20Filled />
-          </span>
-          <div className="stack">
-            <Text weight="semibold">AI Designer</Text>
-            <button className="engine-chip" onClick={onOpenSettings} title="Change AI model">
-              <span className={`dot ${aiConnected ? 'on' : ''}`} />
-              {engineLabel}
-              <ChevronDown16Regular />
-            </button>
-          </div>
-        </div>
+        <span className="panel-name">Assistant</span>
+        <button className="engine-chip" onClick={onOpenSettings} title="Choose AI model">
+          <span className={`dot ${aiConnected ? 'on' : ''}`} />
+          <span className="engine-label">{engineLabel}</span>
+          <ChevronDown12Regular />
+        </button>
       </header>
 
       <div className="messages" ref={listRef}>
         {messages.map((m) => (
           <div key={m.id} className={`msg ${m.role} ${m.error ? 'error' : ''}`}>
-            {m.role === 'assistant' ? (
-              <span className="ai-orb small">
-                <Sparkle20Filled />
-              </span>
-            ) : (
-              <Avatar size={28} icon={<Person24Filled />} color="brand" />
-            )}
-            <div className="bubble-wrap">
-              <div className="bubble">
-                {m.attachments?.length ? (
-                  <div className="thumbs">
-                    {m.attachments.map((id) => (assets[id] ? <img key={id} src={assets[id].dataUrl} alt={assets[id].name} /> : null))}
-                  </div>
-                ) : null}
-                <Markdown text={m.text} />
-              </div>
-              {m.changes?.length || m.engine ? (
-                <div className="meta-row">
-                  {m.changes?.slice(0, 6).map((c, i) => (
-                    <Badge key={i} appearance="tint" size="small" color={m.error ? 'danger' : 'brand'} shape="rounded">
-                      {c}
-                    </Badge>
-                  ))}
-                  {m.engine && m.role === 'assistant' ? <Caption1 className="muted">{m.engine}</Caption1> : null}
+            <div className="bubble">
+              {m.attachments?.length ? (
+                <div className="thumbs">
+                  {m.attachments.map((id) => (assets[id] ? <img key={id} src={assets[id].dataUrl} alt={assets[id].name} /> : null))}
                 </div>
               ) : null}
+              <Markdown text={m.text} />
             </div>
+            {m.role === 'assistant' && (m.changes?.length || m.engine) ? (
+              <div className="meta-row">
+                {m.changes?.slice(0, 5).map((c, i) => (
+                  <span key={i} className="change-tag">
+                    {c}
+                  </span>
+                ))}
+              </div>
+            ) : null}
           </div>
         ))}
         {busy ? (
           <div className="msg assistant">
-            <span className="ai-orb small pulse">
-              <Sparkle20Filled />
-            </span>
-            <div className="bubble-wrap">
-              <div className="bubble thinking">
-                {progress?.reply ? <Markdown text={progress.reply} /> : null}
-                <div className="row gap8">
-                  <Spinner size="extra-tiny" />
-                  <Caption1>{progress && progress.chars > 0 ? `Designing your document… ${(progress.chars / 1000).toFixed(1)}k chars` : 'Thinking…'}</Caption1>
-                </div>
-                <div className="shimmer" />
+            <div className="bubble thinking">
+              {progress?.reply ? <Markdown text={progress.reply} /> : null}
+              <div className="row gap8 muted">
+                <Spinner size="extra-tiny" />
+                <Caption1>{progress && progress.chars > 0 ? `Writing your document… ${(progress.chars / 1000).toFixed(1)}k characters` : 'Thinking…'}</Caption1>
               </div>
             </div>
           </div>
         ) : null}
-        {!aiConnected && !busy && messages.filter((m) => m.role === 'user').length <= 3 ? (
-          <div className="unlock-card">
-            <div className="unlock-icon">
-              <Key20Regular />
+        {!aiConnected && !busy && userCount <= 3 ? (
+          <div className="note-card">
+            <div>
+              <strong>You are in offline mode.</strong> It can make a few built-in physics notes and templates. To let the AI write and design anything, add a free <b>Gemini</b> or <b>Groq</b> key.
             </div>
-            <div className="stack">
-              <Text weight="semibold">Let the AI write and draw anything, for free</Text>
-              <Caption1>
-                The offline engine only knows built-in templates. Paste a free <b>Google Gemini</b> key (from aistudio.google.com, takes about a minute) or a <b>Groq</b> key, and the AI takes full control: any topic, its
-                own equations, plots, diagrams and layout.
-              </Caption1>
-              <div className="row gap8" style={{ marginTop: 6 }}>
-                <Button size="small" appearance="primary" onClick={onOpenSettings}>
-                  Connect free AI
-                </Button>
-                <Button size="small" appearance="subtle" as="a" href="https://aistudio.google.com/app/apikey" target="_blank">
-                  Get a Gemini key
-                </Button>
-              </div>
+            <div className="row gap8">
+              <Button size="small" appearance="primary" onClick={onOpenSettings}>
+                Add free key
+              </Button>
+              <Button size="small" appearance="transparent" as="a" href="https://aistudio.google.com/app/apikey" target="_blank">
+                Get a Gemini key ↗
+              </Button>
             </div>
           </div>
         ) : null}
-        {showSuggestions && !busy ? (
+        {userCount === 0 && !busy ? (
           <div className="suggestions">
-            <Caption1 className="muted">Try one of these</Caption1>
-            <div className="suggestion-grid">
-              {SUGGESTIONS.map((s) => (
-                <button key={s.title} className="suggestion" onClick={() => send(s.prompt)}>
-                  <span className="s-icon">{s.icon}</span>
-                  <span>
-                    <strong>{s.title}</strong>
-                    <span className="s-prompt">{s.prompt}</span>
-                  </span>
-                </button>
-              ))}
-            </div>
+            <Caption1 className="muted">Start with an idea, from simple to detailed</Caption1>
+            {SUGGESTIONS.map((sg) => (
+              <button key={sg.label} className="suggestion" onClick={() => send(sg.prompt)}>
+                {sg.label}
+              </button>
+            ))}
           </div>
         ) : null}
       </div>
 
       <div className="composer">
-        {pending.length ? (
-          <div className="pending">
-            {pending.map((a) => (
-              <div key={a.id} className="pending-item">
-                <img src={a.dataUrl} alt={a.name} />
-                <button aria-label="Remove" onClick={() => setPending((p) => p.filter((x) => x.id !== a.id))}>
-                  <Dismiss16Regular />
-                </button>
-              </div>
-            ))}
-          </div>
-        ) : null}
-        <Textarea
-          className="composer-input"
-          appearance="filled-lighter"
-          resize="none"
-          placeholder="Describe a document, or ask for a change…  (Shift+Enter for a new line)"
-          value={text}
-          onChange={(_, d) => setText(d.value)}
-          onKeyDown={onKey}
-          onPaste={onPaste}
-          rows={Math.min(8, Math.max(2, text.split('\n').length))}
-        />
-        <div className="composer-bar">
-          <div className="row gap4">
+        <div className="composer-box">
+          {pending.length ? (
+            <div className="pending">
+              {pending.map((a) => (
+                <div key={a.id} className="pending-item">
+                  <img src={a.dataUrl} alt={a.name} />
+                  <button aria-label="Remove" onClick={() => setPending((p) => p.filter((x) => x.id !== a.id))}>
+                    <Dismiss16Regular />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          <textarea
+            className="composer-input"
+            placeholder="Describe a document, or ask for a change…"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={onKey}
+            onPaste={onPaste}
+            rows={Math.min(8, Math.max(2, text.split('\n').length))}
+          />
+          <div className="composer-bar">
             <input
               ref={fileRef}
               type="file"
@@ -249,19 +197,22 @@ export function ChatPanel({ messages, assets, busy, progress, engineLabel, onSen
               }}
             />
             <Tooltip content="Attach images (or paste / drop them)" relationship="label">
-              <Button appearance="subtle" icon={<Attach20Regular />} onClick={() => fileRef.current?.click()} />
+              <Button appearance="subtle" size="small" icon={<Attach20Regular />} onClick={() => fileRef.current?.click()} />
             </Tooltip>
-            <Caption1 className="muted hint">Enter to send</Caption1>
+            {busy ? (
+              <Tooltip content="Stop" relationship="label">
+                <button className="send-btn stop" onClick={onStop} aria-label="Stop">
+                  <Stop20Filled />
+                </button>
+              </Tooltip>
+            ) : (
+              <Tooltip content="Send (Enter)" relationship="label">
+                <button className="send-btn" disabled={!text.trim() && !pending.length} onClick={() => send()} aria-label="Send">
+                  <ArrowUp20Filled />
+                </button>
+              </Tooltip>
+            )}
           </div>
-          {busy ? (
-            <Button appearance="secondary" icon={<Stop24Filled />} onClick={onStop}>
-              Stop
-            </Button>
-          ) : (
-            <Button appearance="primary" icon={<Send24Filled />} disabled={!text.trim() && !pending.length} onClick={() => send()}>
-              Send
-            </Button>
-          )}
         </div>
       </div>
       {drag ? <div className="drop-overlay">Drop images to attach</div> : null}

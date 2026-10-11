@@ -1,4 +1,4 @@
-import { Document, Ellipse, G, Image, Line, Link, Page, Path, Polygon, Rect, Circle, Svg, Text, View } from '@react-pdf/renderer';
+import { Document, Ellipse, G, Image, Line, Link, Page, Path, Polygon, Rect, Circle, Svg, Text, View } from './prim';
 import type { ReactNode } from 'react';
 import type { Style } from '@react-pdf/types';
 import type { Asset, Block, BoxBlock, BoxVariant, DocSpec, ListBlock, StepsBlock, TableBlock } from '../types';
@@ -13,6 +13,7 @@ import { MathSvg } from './MathSvg';
 import { layoutPlot } from './plotLayout';
 import { layoutFigure } from './figureLayout';
 import { texToRuns } from './texInline';
+import { grade, paperColor, setGrade } from './color';
 
 export const PAGE_DIMS: Record<string, [number, number]> = {
   A4: [595.28, 841.89],
@@ -38,7 +39,17 @@ interface Ctx {
   table: { n: number };
   headingNums: Record<string, string>;
   numbered: boolean;
+  minimal: boolean;
+  vivid: boolean;
+  paper: string;
+  ty: { body: number; lh: number; para: number; k: number };
 }
+
+const DENSITY = {
+  compact: { body: 10, lh: 1.5, para: 6, k: 0.8, px: 48, py: 50 },
+  comfortable: { body: 10.5, lh: 1.62, para: 9, k: 1, px: 62, py: 62 },
+  airy: { body: 11, lh: 1.75, para: 12, k: 1.3, px: 74, py: 72 },
+} as const;
 
 // ------------------------------------------------------------------ inline
 function MathRuns({ tex, size, ctx, color, bold }: { tex: string; size: number; ctx: Ctx; color?: string; bold?: boolean }) {
@@ -68,7 +79,8 @@ function MathRuns({ tex, size, ctx, color, bold }: { tex: string; size: number; 
   );
 }
 
-function Inline({ text, ctx, color, size = 10.5 }: { text: string; ctx: Ctx; color?: string; size?: number }) {
+function Inline({ text, ctx, color, size: sizeIn }: { text: string; ctx: Ctx; color?: string; size?: number }) {
+  const size = sizeIn ?? ctx.ty.body;
   const toks = tokenizeInline(String(text ?? ''));
   return (
     <>
@@ -83,7 +95,7 @@ function Inline({ text, ctx, color, size = 10.5 }: { text: string; ctx: Ctx; col
           style.backgroundColor = tint(ctx.theme.primary, 0.9);
           style.color = shade(ctx.theme.primary, 0.35);
         }
-        if (t.mark) style.backgroundColor = '#fef08a';
+        if (t.mark) style.backgroundColor = ctx.vivid ? '#fef08a' : '#f3e6b3';
         if (color && !t.code) style.color = color;
         if (t.href) {
           return (
@@ -117,10 +129,23 @@ function Heading({ b, ctx }: { b: Extract<Block, { type: 'heading' }>; ctx: Ctx 
       }}
     />
   );
+  const k = ctx.ty.k;
+  if (ctx.minimal) {
+    const sz = b.level === 1 ? 16 : b.level === 2 ? 12.5 : 11;
+    return (
+      <View id={b.id} minPresenceAhead={60} style={{ marginTop: (b.level === 1 ? 22 : 14) * k, marginBottom: (b.level === 1 ? 8 : 5) * k }}>
+        {tracker}
+        <Text style={{ fontSize: sz, fontWeight: b.level === 1 ? 700 : 600, color: b.level === 3 ? theme.muted : theme.text, lineHeight: 1.3, letterSpacing: b.level === 1 ? -0.2 : 0 }}>
+          {num ? <Text style={{ color: theme.muted, fontWeight: 400 }}>{num.replace(/\.$/, '')}{'   '}</Text> : null}
+          <Inline text={b.text} ctx={ctx} size={sz} />
+        </Text>
+      </View>
+    );
+  }
   if (ctx.academic) {
     const sz = b.level === 1 ? 15.5 : b.level === 2 ? 12.5 : 11;
     return (
-      <View id={b.id} minPresenceAhead={60} style={{ marginTop: b.level === 1 ? 18 : 12, marginBottom: b.level === 1 ? 7 : 5 }}>
+      <View id={b.id} minPresenceAhead={60} style={{ marginTop: (b.level === 1 ? 20 : 13) * k, marginBottom: (b.level === 1 ? 7 : 5) * k }}>
         {tracker}
         <Text style={{ fontSize: sz, fontWeight: 700, fontStyle: b.level === 3 ? 'italic' : 'normal', color: b.level === 1 ? theme.primaryDark : theme.text, lineHeight: 1.3 }}>
           {num ? <Text>{num.replace(/\.$/, '')}{'   '}</Text> : null}
@@ -131,30 +156,34 @@ function Heading({ b, ctx }: { b: Extract<Block, { type: 'heading' }>; ctx: Ctx 
   }
   if (b.level === 1)
     return (
-      <View id={b.id} minPresenceAhead={80} style={{ marginTop: 20, marginBottom: 10 }}>
+      <View id={b.id} minPresenceAhead={80} style={{ marginTop: 22 * k, marginBottom: 10 * k }}>
         {tracker}
-        <Text style={{ fontSize: 20, fontWeight: 800, color: theme.primaryDark, lineHeight: 1.25 }}>
-          {num ? <Text style={{ color: theme.primary }}>{num}  </Text> : null}
-          <Inline text={b.text} ctx={ctx} size={ctx.academic ? 15.5 : 20} />
+        <Text style={{ fontSize: 19, fontWeight: 700, color: theme.primaryDark, lineHeight: 1.25, letterSpacing: -0.2 }}>
+          {num ? <Text style={{ color: theme.primary, fontWeight: 600 }}>{num}  </Text> : null}
+          <Inline text={b.text} ctx={ctx} size={19} />
         </Text>
-        <View style={{ flexDirection: 'row', marginTop: 6 }}>
-          <View style={{ width: 36, height: 3, backgroundColor: theme.primary, borderRadius: 2 }} />
-          <View style={{ width: 10, height: 3, backgroundColor: theme.accent, borderRadius: 2, marginLeft: 3 }} />
-        </View>
+        {ctx.vivid ? (
+          <View style={{ flexDirection: 'row', marginTop: 6 }}>
+            <View style={{ width: 36, height: 3, backgroundColor: theme.primary, borderRadius: 2 }} />
+            <View style={{ width: 10, height: 3, backgroundColor: theme.accent, borderRadius: 2, marginLeft: 3 }} />
+          </View>
+        ) : (
+          <View style={{ width: 28, height: 1.6, backgroundColor: theme.primary, borderRadius: 1, marginTop: 7, opacity: 0.8 }} />
+        )}
       </View>
     );
   if (b.level === 2)
     return (
-      <View id={b.id} minPresenceAhead={60} style={{ marginTop: 14, marginBottom: 6 }}>
+      <View id={b.id} minPresenceAhead={60} style={{ marginTop: 15 * k, marginBottom: 6 * k }}>
         {tracker}
-        <Text style={{ fontSize: 14, fontWeight: 700, color: theme.text, lineHeight: 1.3 }}>
+        <Text style={{ fontSize: 13.5, fontWeight: 700, color: theme.text, lineHeight: 1.3 }}>
           {num ? <Text style={{ color: theme.primary }}>{num}  </Text> : null}
           <Inline text={b.text} ctx={ctx} size={ctx.academic ? 12.5 : 14} />
         </Text>
       </View>
     );
   return (
-    <View id={b.id} minPresenceAhead={50} style={{ marginTop: 10, marginBottom: 4 }}>
+    <View id={b.id} minPresenceAhead={50} style={{ marginTop: 11 * k, marginBottom: 4 * k }}>
       {tracker}
       <Text style={{ fontSize: 11.5, fontWeight: 700, color: theme.primary, lineHeight: 1.3 }}>
         <Inline text={b.text} ctx={ctx} size={11.5} />
@@ -167,7 +196,7 @@ function ListView({ b, ctx }: { b: ListBlock; ctx: Ctx }) {
   const { theme } = ctx;
   const counters: number[] = [];
   return (
-    <View style={{ marginBottom: 8, marginTop: 2 }}>
+    <View style={{ marginBottom: ctx.ty.para, marginTop: 2 }}>
       {(b.items ?? []).map((raw, i) => {
         const str = String(raw ?? '');
         const depth = Math.min(3, Math.floor((str.match(/^\s*/)?.[0].length ?? 0) / 2));
@@ -191,19 +220,19 @@ function ListView({ b, ctx }: { b: ListBlock; ctx: Ctx }) {
         } else if (b.ordered) {
           const n = counters[depth];
           const label = depth === 1 ? String.fromCharCode(96 + ((n - 1) % 26) + 1) : depth === 2 ? toRoman(n).toLowerCase() : String(n);
-          marker = <Text style={{ fontSize: 10, fontWeight: 700, color: theme.primary, lineHeight: 1.55 }}>{label}.</Text>;
+          marker = <Text style={{ fontSize: ctx.ty.body - 0.5, fontWeight: 600, color: theme.primary, lineHeight: 1.55 }}>{label}.</Text>;
         } else {
           marker =
             depth === 0 ? (
-              <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: theme.primary, marginTop: 5.5 }} />
+              <View style={{ width: 4.5, height: 4.5, borderRadius: 3, backgroundColor: theme.primary, marginTop: 5.8, opacity: ctx.vivid ? 1 : 0.75 }} />
             ) : (
               <View style={{ width: 5, height: 5, borderRadius: 3, borderWidth: 1, borderColor: theme.primary, marginTop: 5.5 }} />
             );
         }
         return (
-          <View key={i} wrap={false} style={{ flexDirection: 'row', marginLeft: depth * 16, marginBottom: 3.5 }}>
-            <View style={{ width: b.ordered ? 18 : 14, alignItems: b.ordered ? 'flex-start' : 'flex-start' }}>{marker}</View>
-            <Text style={{ flex: 1, fontSize: 10.5, lineHeight: 1.55, color: checked ? theme.muted : theme.text, textDecoration: checked ? 'line-through' : 'none' }}>
+          <View key={i} wrap={false} style={{ flexDirection: 'row', marginLeft: depth * 16, marginBottom: 3.5 * ctx.ty.k }}>
+            <View style={{ width: b.ordered ? 18 : 14, alignItems: b.ordered ? 'flex-start' : 'flex-start', paddingTop: (ctx.ty.lh - 1.55) * ctx.ty.body * 0.5 }}>{marker}</View>
+            <Text style={{ flex: 1, fontSize: ctx.ty.body, lineHeight: ctx.ty.lh, color: checked ? theme.muted : theme.text, textDecoration: checked ? 'line-through' : 'none' }}>
               <Inline text={text} ctx={ctx} />
             </Text>
           </View>
@@ -280,7 +309,7 @@ function TableView({ b, ctx }: { b: TableBlock; ctx: Ctx }) {
     <View style={{ marginVertical: 8 }}>
       <View style={{ borderRadius: 6, borderWidth: 1, borderColor: theme.border, overflow: 'hidden' }}>
         {headers.length ? (
-          <View style={{ flexDirection: 'row', backgroundColor: theme.primary }} wrap={false}>
+          <View style={{ flexDirection: 'row', backgroundColor: ctx.vivid ? theme.primary : theme.soft, borderBottomWidth: ctx.vivid ? 0 : 1, borderBottomColor: theme.primary }} wrap={false}>
             {Array.from({ length: cols }, (_, c) => (
               <Text
                 key={c}
@@ -290,11 +319,11 @@ function TableView({ b, ctx }: { b: TableBlock; ctx: Ctx }) {
                   paddingHorizontal: 7,
                   fontSize: 8.8,
                   fontWeight: 700,
-                  color: '#ffffff',
+                  color: ctx.vivid ? '#ffffff' : theme.primaryDark,
                   textAlign: alignFor(c, String(rows[0]?.[c] ?? '')),
                 }}
               >
-                <Inline text={headers[c] ?? ''} ctx={ctx} size={8.8} color="#ffffff" />
+                <Inline text={headers[c] ?? ''} ctx={ctx} size={8.8} color={ctx.vivid ? '#ffffff' : theme.primaryDark} />
               </Text>
             ))}
           </View>
@@ -317,10 +346,10 @@ function TableView({ b, ctx }: { b: TableBlock; ctx: Ctx }) {
                   key={c}
                   style={{
                     width: `${(weights[c] / total) * 100}%`,
-                    paddingVertical: 5,
+                    paddingVertical: 5.5,
                     paddingHorizontal: 7,
-                    fontSize: 9,
-                    lineHeight: 1.4,
+                    fontSize: 9.2,
+                    lineHeight: 1.45,
                     color: theme.text,
                     fontWeight: isTotal || (c === 0 && cols > 2) ? 600 : 400,
                     textAlign: alignFor(c, String(r[c] ?? '')),
@@ -364,7 +393,7 @@ function Caption({ text, ctx }: { text?: string; ctx: Ctx }) {
 function FigureCard({ children, ctx }: { children: ReactNode; ctx: Ctx }) {
   if (ctx.academic) return <View style={{ paddingVertical: 4, alignItems: 'center' }}>{children}</View>;
   return (
-    <View style={{ borderWidth: 1, borderColor: ctx.theme.border, borderRadius: 8, padding: 12, backgroundColor: '#ffffff', alignItems: 'center' }}>{children}</View>
+    <View style={{ borderWidth: ctx.vivid ? 1 : 0.7, borderColor: ctx.theme.border, borderRadius: 8, padding: 12, backgroundColor: ctx.vivid ? '#ffffff' : 'transparent', alignItems: 'center' }}>{children}</View>
   );
 }
 
@@ -472,7 +501,8 @@ function boxContentLength(b: BoxBlock): number {
 function BoxView({ b, ctx }: { b: BoxBlock; ctx: Ctx }) {
   const { theme } = ctx;
   const st = BOX_STYLE[b.variant] ?? BOX_STYLE.note;
-  const color = st.color ?? (b.variant === 'summary' ? theme.primaryDark : theme.primary);
+  const calm: Partial<Record<BoxVariant, string>> = { example: theme.accent, problem: theme.accent, solution: theme.accent, warning: '#a8742f', proof: theme.muted, summary: theme.primaryDark };
+  const color = ctx.vivid ? st.color ?? (b.variant === 'summary' ? theme.primaryDark : theme.primary) : calm[b.variant] ?? theme.primary;
   let label = st.label;
   if (st.numbered) {
     ctx.boxes[b.variant] = (ctx.boxes[b.variant] ?? 0) + 1;
@@ -482,8 +512,8 @@ function BoxView({ b, ctx }: { b: BoxBlock; ctx: Ctx }) {
   const body = (
     <>
       {b.text ? (
-        <Text style={{ fontSize: 10.2, lineHeight: 1.55, color: theme.text, marginBottom: b.blocks?.length ? 4 : 0, fontStyle: b.variant === 'theorem' && ctx.academic ? 'italic' : 'normal' }}>
-          <Inline text={b.text} ctx={ctx} size={10.2} />
+        <Text style={{ fontSize: ctx.ty.body - 0.3, lineHeight: ctx.ty.lh - 0.05, color: theme.text, marginBottom: b.blocks?.length ? 4 : 0, fontStyle: b.variant === 'theorem' && ctx.academic ? 'italic' : 'normal' }}>
+          <Inline text={b.text} ctx={ctx} size={ctx.ty.body - 0.3} />
         </Text>
       ) : null}
       {(b.blocks ?? []).map((c) => (
@@ -515,7 +545,7 @@ function BoxView({ b, ctx }: { b: BoxBlock; ctx: Ctx }) {
     );
   if (ctx.academic)
     return (
-      <View wrap={keep ? false : undefined} style={{ marginVertical: 8, paddingVertical: 7, paddingHorizontal: 10, borderLeftWidth: 2, borderLeftColor: color, backgroundColor: tint(color, 0.95) }}>
+      <View wrap={keep ? false : undefined} style={{ marginVertical: 9 * ctx.ty.k, paddingVertical: 8, paddingHorizontal: 11, borderLeftWidth: ctx.minimal ? 1.5 : 2, borderLeftColor: ctx.minimal ? tint(color, 0.55) : color, backgroundColor: ctx.minimal ? 'transparent' : tint(color, ctx.vivid ? 0.95 : 0.93) }}>
         <Text style={{ fontSize: 10.2, fontWeight: 700, color: shade(color, 0.15), marginBottom: 3 }}>
           {!st.numbered && b.title ? (
             <Inline text={b.title} ctx={ctx} size={10.2} />
@@ -537,10 +567,10 @@ function BoxView({ b, ctx }: { b: BoxBlock; ctx: Ctx }) {
     );
   const formula = b.variant === 'formula' || b.variant === 'summary';
   return (
-    <View wrap={keep ? false : undefined} style={{ marginVertical: 9, borderRadius: 8, borderWidth: 1, borderColor: tint(color, 0.7), backgroundColor: formula ? tint(color, 0.955) : '#ffffff', overflow: 'hidden' }}>
+    <View wrap={keep ? false : undefined} style={{ marginVertical: 10 * ctx.ty.k, borderRadius: 8, borderWidth: ctx.vivid ? 1 : 0.8, borderColor: tint(color, 0.7), backgroundColor: formula ? tint(color, 0.955) : ctx.vivid ? '#ffffff' : 'transparent', overflow: 'hidden' }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 11, paddingVertical: 6, backgroundColor: tint(color, 0.9), borderBottomWidth: 0.8, borderBottomColor: tint(color, 0.75) }}>
         <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: color, marginRight: 7 }} />
-        <Text style={{ fontSize: 8, fontWeight: 800, letterSpacing: 1, color: shade(color, 0.12) }}>{label.toUpperCase()}</Text>
+        <Text style={{ fontSize: 7.8, fontWeight: 700, letterSpacing: 1.1, color: shade(color, 0.12) }}>{label.toUpperCase()}</Text>
         {b.title ? (
           <Text style={{ fontSize: 10, fontWeight: 700, color: theme.text, marginLeft: 8, flex: 1 }}>
             <Inline text={b.title} ctx={ctx} size={10} />
@@ -568,8 +598,8 @@ function StepsView({ b, ctx }: { b: StepsBlock; ctx: Ctx }) {
           </View>
           <View style={{ flex: 1, paddingLeft: 8, paddingBottom: 10, paddingTop: 1.5 }}>
             {it.text ? (
-              <Text style={{ fontSize: 10.2, lineHeight: 1.5, color: theme.text }}>
-                <Inline text={it.text} ctx={ctx} size={10.2} />
+              <Text style={{ fontSize: ctx.ty.body - 0.3, lineHeight: ctx.ty.lh - 0.08, color: theme.text }}>
+                <Inline text={it.text} ctx={ctx} size={ctx.ty.body - 0.3} />
               </Text>
             ) : null}
             {it.math ? (
@@ -593,14 +623,14 @@ function BlockView({ b, ctx }: { b: Block; ctx: Ctx }): ReactNode {
       return (
         <Text
           style={{
-            fontSize: b.lead ? 12.5 : 10.5,
-            lineHeight: b.lead ? 1.55 : 1.6,
+            fontSize: b.lead ? ctx.ty.body + 2 : ctx.ty.body,
+            lineHeight: b.lead ? ctx.ty.lh - 0.05 : ctx.ty.lh,
             color: b.lead ? shade(theme.muted, 0.15) : theme.text,
             textAlign: b.align ?? 'left',
-            marginBottom: b.lead ? 12 : 8,
+            marginBottom: b.lead ? ctx.ty.para + 5 : ctx.ty.para,
           }}
         >
-          <Inline text={b.text} ctx={ctx} size={b.lead ? 12.5 : 10.5} />
+          <Inline text={b.text} ctx={ctx} size={b.lead ? ctx.ty.body + 2 : ctx.ty.body} />
         </Text>
       );
     case 'list':
@@ -705,14 +735,14 @@ function BlockView({ b, ctx }: { b: Block; ctx: Ctx }): ReactNode {
     case 'callout': {
       const t = TONES[b.tone] ?? TONES.info;
       return (
-        <View wrap={false} style={{ marginVertical: 8, flexDirection: 'row', backgroundColor: t.bg, borderLeftWidth: 3, borderLeftColor: t.border, borderRadius: 6, padding: 11 }}>
+        <View wrap={false} style={{ marginVertical: 9 * ctx.ty.k, flexDirection: 'row', backgroundColor: t.bg, borderLeftWidth: ctx.vivid ? 3 : 2, borderLeftColor: t.border, borderRadius: 6, padding: 12 }}>
           <View style={{ marginRight: 9, marginTop: 0.5 }}>
             <ToneIcon tone={b.tone in TONES ? b.tone : 'info'} color={t.border} />
           </View>
           <View style={{ flex: 1 }}>
             {b.title ? <Text style={{ fontSize: 10.5, fontWeight: 700, color: t.title, marginBottom: 2 }}>{b.title}</Text> : null}
-            <Text style={{ fontSize: 9.8, lineHeight: 1.5, color: '#1f2937' }}>
-              <Inline text={b.text} ctx={ctx} size={9.8} />
+            <Text style={{ fontSize: ctx.ty.body - 0.5, lineHeight: ctx.ty.lh - 0.08, color: theme.text }}>
+              <Inline text={b.text} ctx={ctx} size={ctx.ty.body - 0.5} />
             </Text>
           </View>
         </View>
@@ -748,9 +778,9 @@ function BlockView({ b, ctx }: { b: Block; ctx: Ctx }): ReactNode {
           {items.map((it, i) => {
             const trend = it.trend ?? (String(it.delta ?? '').trim().startsWith('-') || String(it.delta ?? '').trim().startsWith('−') ? 'down' : it.delta ? 'up' : 'flat');
             return (
-              <View key={i} style={{ flex: 1, marginHorizontal: 4, borderRadius: 8, borderWidth: 1, borderColor: theme.border, backgroundColor: '#ffffff', padding: 10, borderTopWidth: 3, borderTopColor: theme.palette[i % theme.palette.length] }}>
+              <View key={i} style={{ flex: 1, marginHorizontal: 4, borderRadius: 8, borderWidth: 1, borderColor: theme.border, backgroundColor: ctx.vivid ? '#ffffff' : 'transparent', padding: 10, borderTopWidth: ctx.vivid ? 3 : 2, borderTopColor: ctx.vivid ? theme.palette[i % theme.palette.length] : theme.primary }}>
                 <Text style={{ fontSize: 7.8, fontWeight: 700, color: theme.muted, letterSpacing: 0.5 }}>{String(it.label ?? '').toUpperCase()}</Text>
-                <Text style={{ fontSize: 18, fontWeight: 800, color: theme.text, marginTop: 4 }}>{it.value}</Text>
+                <Text style={{ fontSize: 18, fontWeight: 700, color: theme.text, marginTop: 4 }}>{it.value}</Text>
                 {it.delta ? (
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3 }}>
                     <TrendIcon trend={trend} />
@@ -821,7 +851,7 @@ function BlockView({ b, ctx }: { b: Block; ctx: Ctx }): ReactNode {
       else if (b.numbered !== false) tag = `(${++ctx.eq.n})`;
       const tagW = tag ? 34 : 0;
       return (
-        <View wrap={false} style={{ marginVertical: 7 }}>
+        <View wrap={false} style={{ marginVertical: 8 * ctx.ty.k }}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={{ width: tagW }} />
             <View style={{ flex: 1, alignItems: 'center' }}>
@@ -869,7 +899,7 @@ function BlockView({ b, ctx }: { b: Block; ctx: Ctx }): ReactNode {
       return (
         <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 12 }}>
           <View style={{ flex: 1, height: 0.8, backgroundColor: theme.border }} />
-          <View style={{ width: 5, height: 5, backgroundColor: theme.primary, transform: 'rotate(45deg)', marginHorizontal: 8 }} />
+          <View style={{ width: 4, height: 4, backgroundColor: ctx.vivid ? theme.primary : theme.border, transform: 'rotate(45deg)', marginHorizontal: 8 }} />
           <View style={{ flex: 1, height: 0.8, backgroundColor: theme.border }} />
         </View>
       );
@@ -968,7 +998,7 @@ function Cover({ doc, ctx, size }: { doc: DocSpec; ctx: Ctx; size: [number, numb
   const style = m.coverStyle ?? (ctx.academic ? 'minimal' : 'gradient');
   if (style === 'minimal') {
     return (
-      <Page size={[W, H]} style={{ backgroundColor: '#ffffff', fontFamily: ctx.font, color: theme.text }}>
+      <Page size={[W, H]} style={{ backgroundColor: ctx.paper, fontFamily: ctx.font, color: grade(theme.text) as string }}>
         <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 14, backgroundColor: theme.primary }} />
         <View style={{ position: 'absolute', left: 14, top: 0, bottom: 0, width: 4, backgroundColor: theme.accent }} />
         <View style={{ position: 'absolute', left: 64, right: 54, top: H * 0.3 }}>
@@ -985,7 +1015,7 @@ function Cover({ doc, ctx, size }: { doc: DocSpec; ctx: Ctx; size: [number, numb
     );
   }
   return (
-    <Page size={[W, H]} style={{ backgroundColor: theme.coverBg, fontFamily: ctx.font, color: theme.coverText }}>
+    <Page size={[W, H]} style={{ backgroundColor: grade(theme.coverBg) as string, fontFamily: ctx.font, color: grade(theme.coverText) as string }}>
       <Svg width={W} height={H - 1} style={{ position: 'absolute', left: 0, top: 0 }}>
         <CoverArt style={style} theme={theme} W={W} H={H} />
       </Svg>
@@ -1026,11 +1056,15 @@ function Toc({ doc, ctx }: { doc: DocSpec; ctx: Ctx }) {
   if (!heads.length) return null;
   return (
     <View break={false} style={{ marginBottom: 10 }}>
-      <Text style={{ fontSize: 22, fontWeight: 800, color: theme.primaryDark }}>Contents</Text>
-      <View style={{ flexDirection: 'row', marginTop: 6, marginBottom: 16 }}>
-        <View style={{ width: 36, height: 3, backgroundColor: theme.primary, borderRadius: 2 }} />
-        <View style={{ width: 10, height: 3, backgroundColor: theme.accent, borderRadius: 2, marginLeft: 3 }} />
-      </View>
+      <Text style={{ fontSize: 21, fontWeight: 700, color: theme.primaryDark, letterSpacing: -0.2 }}>Contents</Text>
+      {ctx.vivid ? (
+        <View style={{ flexDirection: 'row', marginTop: 6, marginBottom: 16 }}>
+          <View style={{ width: 36, height: 3, backgroundColor: theme.primary, borderRadius: 2 }} />
+          <View style={{ width: 10, height: 3, backgroundColor: theme.accent, borderRadius: 2, marginLeft: 3 }} />
+        </View>
+      ) : (
+        <View style={{ width: 28, height: 1.6, backgroundColor: theme.primary, borderRadius: 1, marginTop: 7, marginBottom: 18, opacity: 0.8 }} />
+      )}
       {heads.map((h) => {
         const page = ctx.knownPages?.[h.id];
         const num = ctx.headingNums[h.id];
@@ -1106,13 +1140,17 @@ function sanitize<T>(v: T): T {
 export function PdfDocument({ doc: rawDoc, opts }: { doc: DocSpec; opts: RenderOpts }) {
   const doc = sanitize(rawDoc);
   const m = doc.meta;
-  const theme = THEMES[m.theme] ?? THEMES.ocean;
+  const theme = THEMES[m.theme] ?? THEMES.ink;
   const font = FAMILY[m.font] ?? FAMILY.sans;
   const base = PAGE_DIMS[m.pageSize] ?? PAGE_DIMS.A4;
   const size: [number, number] = m.orientation === 'landscape' ? [base[1], base[0]] : base;
-  const PX = size[0] < 500 ? 40 : 54;
-  const PT = 58;
-  const PB = 58;
+  setGrade(m.paper, m.colors);
+  const paper = paperColor(m.paper);
+  const vivid = m.colors === 'vivid';
+  const dens = DENSITY[m.density ?? 'comfortable'] ?? DENSITY.comfortable;
+  const PX = size[0] < 500 ? Math.round(dens.px * 0.72) : dens.px;
+  const PT = dens.py;
+  const PB = dens.py;
   // heading numbers
   const headingNums: Record<string, string> = {};
   let h1 = 0;
@@ -1129,8 +1167,13 @@ export function PdfDocument({ doc: rawDoc, opts }: { doc: DocSpec; opts: RenderO
       headingNums[b.id] = `${h1}.${h2}`;
     }
   }
-  const academic = m.style === 'academic';
+  const minimal = m.style === 'minimal';
+  const academic = m.style === 'academic' || minimal;
   const ctx: Ctx = {
+    minimal,
+    vivid,
+    paper,
+    ty: { body: dens.body, lh: dens.lh, para: dens.para, k: dens.k },
     theme,
     font,
     academic,
@@ -1150,12 +1193,12 @@ export function PdfDocument({ doc: rawDoc, opts }: { doc: DocSpec; opts: RenderO
   return (
     <Document title={m.title} author={m.author} subject={m.subtitle} creator="Fluent PDF Studio" producer="Fluent PDF Studio">
       {m.cover ? <Cover doc={doc} ctx={ctx} size={size} /> : null}
-      <Page size={size} style={{ paddingTop: PT, paddingBottom: PB, paddingHorizontal: PX, fontFamily: font, color: theme.text, fontSize: 10.5, lineHeight: 1.5 }}>
+      <Page size={size} style={{ paddingTop: PT, paddingBottom: PB, paddingHorizontal: PX, fontFamily: font, color: grade(theme.text) as string, fontSize: dens.body, lineHeight: dens.lh, backgroundColor: paper }}>
         {/* page chrome */}
         {academic ? (
           <>
             {headerText ? (
-              <View fixed style={{ position: 'absolute', top: 26, left: PX, right: PX, flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 0.5, borderBottomColor: '#94a3b8', paddingBottom: 4 }}>
+              <View fixed style={{ position: 'absolute', top: 26, left: PX, right: PX, flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 0.5, borderBottomColor: theme.border, paddingBottom: 4 }}>
                 <Text style={{ fontSize: 8, color: theme.muted, fontStyle: 'italic' }}>{headerText}</Text>
                 <Text style={{ fontSize: 8, color: theme.muted }}>{m.author ?? m.date ?? ''}</Text>
               </View>
@@ -1167,8 +1210,14 @@ export function PdfDocument({ doc: rawDoc, opts }: { doc: DocSpec; opts: RenderO
           </>
         ) : (
           <>
-            <View fixed style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 5, backgroundColor: theme.primary }} />
-            <View fixed style={{ position: 'absolute', top: 0, left: 0, width: size[0] * 0.28, height: 5, backgroundColor: theme.accent }} />
+            {vivid ? (
+              <>
+                <View fixed style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 5, backgroundColor: theme.primary }} />
+                <View fixed style={{ position: 'absolute', top: 0, left: 0, width: size[0] * 0.28, height: 5, backgroundColor: theme.accent }} />
+              </>
+            ) : (
+              <View fixed style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2.5, backgroundColor: theme.primary, opacity: 0.85 }} />
+            )}
             {headerText ? (
               <View fixed style={{ position: 'absolute', top: 22, left: PX, right: PX, flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 0.6, borderBottomColor: theme.border, paddingBottom: 6 }}>
                 <Text style={{ fontSize: 7.8, color: theme.muted, fontWeight: 600 }}>{headerText}</Text>
@@ -1185,14 +1234,27 @@ export function PdfDocument({ doc: rawDoc, opts }: { doc: DocSpec; opts: RenderO
         )}
 
         {/* title block when there is no cover */}
-        {!m.cover && academic ? (
+        {!m.cover && minimal ? (
+          <View style={{ marginBottom: 22 * dens.k }}>
+            {m.kicker ? <Text style={{ fontSize: 8, letterSpacing: 1.6, color: theme.muted, fontWeight: 600, marginBottom: 10 }}>{m.kicker.toUpperCase()}</Text> : null}
+            <Text style={{ fontSize: size[0] < 500 ? 21 : 25, fontWeight: 700, color: theme.text, lineHeight: 1.2, letterSpacing: -0.4 }}>{m.title}</Text>
+            {m.subtitle ? <Text style={{ fontSize: 12, color: theme.muted, marginTop: 7, lineHeight: 1.45 }}>{m.subtitle}</Text> : null}
+            {m.author || m.date ? (
+              <Text style={{ fontSize: 9, color: theme.muted, marginTop: 12 }}>
+                {[m.author, m.date].filter(Boolean).join('   ·   ')}
+              </Text>
+            ) : null}
+            <View style={{ height: 0.6, backgroundColor: theme.border, marginTop: 16 }} />
+          </View>
+        ) : null}
+        {!m.cover && academic && !minimal ? (
           <View style={{ marginBottom: 14, alignItems: 'center' }}>
             {m.kicker ? <Text style={{ fontSize: 8, letterSpacing: 1.8, color: theme.primary, fontWeight: 700, marginBottom: 8 }}>{m.kicker.toUpperCase()}</Text> : null}
             <Text style={{ fontSize: size[0] < 500 ? 19 : 22, fontWeight: 700, color: theme.text, lineHeight: 1.25, textAlign: 'center' }}>{m.title}</Text>
             {m.subtitle ? <Text style={{ fontSize: 11.5, color: theme.muted, marginTop: 6, lineHeight: 1.4, textAlign: 'center', fontStyle: 'italic' }}>{m.subtitle}</Text> : null}
             {m.author ? <Text style={{ fontSize: 11, color: theme.text, marginTop: 10 }}>{m.author}</Text> : null}
             {m.date ? <Text style={{ fontSize: 9.5, color: theme.muted, marginTop: 3 }}>{m.date}</Text> : null}
-            <View style={{ alignSelf: 'stretch', height: 0.7, backgroundColor: theme.text, marginTop: 12 }} />
+            <View style={{ alignSelf: 'stretch', height: 0.7, backgroundColor: vivid ? theme.text : theme.muted, marginTop: 14 }} />
           </View>
         ) : null}
         {!m.cover && !academic ? (
@@ -1202,7 +1264,7 @@ export function PdfDocument({ doc: rawDoc, opts }: { doc: DocSpec; opts: RenderO
                 <Text style={{ fontSize: 7.8, letterSpacing: 1.6, color: theme.primary, fontWeight: 800, backgroundColor: theme.soft, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 4 }}>{m.kicker.toUpperCase()}</Text>
               </View>
             ) : null}
-            <Text style={{ fontSize: size[0] < 500 ? 22 : 27, fontWeight: 800, color: theme.primaryDark, lineHeight: 1.2 }}>{m.title}</Text>
+            <Text style={{ fontSize: size[0] < 500 ? 22 : 27, fontWeight: 700, color: theme.primaryDark, lineHeight: 1.2, letterSpacing: -0.3 }}>{m.title}</Text>
             {m.subtitle ? <Text style={{ fontSize: 12, color: theme.muted, marginTop: 6, lineHeight: 1.45 }}>{m.subtitle}</Text> : null}
             {m.author || m.date ? (
               <View style={{ flexDirection: 'row', marginTop: 10, alignItems: 'center' }}>

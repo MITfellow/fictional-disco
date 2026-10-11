@@ -59,11 +59,22 @@ const FACES: Record<string, Face[]> = {
 export const FONT_FILES = Object.values(FACES).flatMap((f) => f.map((x) => x[0]));
 
 let registered = false;
+let lastResolve: ((file: string) => string) | null = null;
+
+/** Drops every parsed font and registers fresh font sources (they are re-parsed on next use). */
+export function refreshFonts() {
+  if (!lastResolve) return;
+  const fams = Font.getRegisteredFonts() as Record<string, unknown>;
+  for (const family of Object.keys(FACES)) delete fams[family];
+  registered = false;
+  registerFonts(lastResolve);
+}
 
 /** `resolve` maps a fontsource-relative file to a URL (browser) or absolute path (node). */
 export function registerFonts(resolve: (file: string) => string) {
   if (registered) return;
   registered = true;
+  lastResolve = resolve;
   for (const [family, faces] of Object.entries(FACES)) {
     const fonts: { src: string; fontWeight: number; fontStyle?: 'italic' | 'normal' }[] = [];
     for (const [file, weight, style] of faces) fonts.push({ src: resolve(file), fontWeight: weight, fontStyle: style ?? 'normal' });

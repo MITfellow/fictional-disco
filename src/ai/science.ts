@@ -54,7 +54,7 @@ export function buildScienceNotes(topic: ScienceTopic, opts: { theme?: ThemeName
 // ---------------------------------------------------------------- projectile
 function projectile(): DocSpec {
   return {
-    meta: meta('Projectile Motion', 'Two-dimensional kinematics under uniform gravity', 'ocean'),
+    meta: meta('Projectile Motion', 'Two-dimensional kinematics under uniform gravity', 'ink'),
     blocks: [
       BOX('abstract', undefined, 'A projectile is any object launched into the air that moves only under the influence of gravity. Because the horizontal and vertical motions are **independent**, the path can be analysed as uniform motion along $x$ combined with uniformly accelerated motion along $y$. The result is a parabola whose range, height and flight time follow from three short formulas.'),
       H(1, 'Setting up the problem'),
@@ -133,7 +133,7 @@ function projectile(): DocSpec {
 // ---------------------------------------------------------------- forces
 function forces(): DocSpec {
   return {
-    meta: meta("Newton's Laws & Inclined Planes", 'Forces, free-body diagrams and friction', 'royal'),
+    meta: meta("Newton's Laws & Inclined Planes", 'Forces, free-body diagrams and friction', 'plum'),
     blocks: [
       P('Dynamics explains **why** objects move. Newton’s three laws link the net force on a body to its change in motion, and free-body diagrams turn word problems into solvable equations.', true),
       H(1, "Newton's three laws"),
@@ -181,7 +181,7 @@ function forces(): DocSpec {
 // ---------------------------------------------------------------- oscillations
 function oscillations(): DocSpec {
   return {
-    meta: meta('Simple Harmonic Motion', 'Springs, pendulums and the mathematics of oscillation', 'emerald'),
+    meta: meta('Simple Harmonic Motion', 'Springs, pendulums and the mathematics of oscillation', 'sage'),
     blocks: [
       BOX('abstract', undefined, 'Simple harmonic motion (SHM) appears whenever a restoring force is proportional to displacement. These notes derive the equation of motion for a mass on a spring, solve it, examine energy exchange, and apply the result to the simple pendulum.'),
       H(1, 'The mass–spring system'),
@@ -252,7 +252,7 @@ function oscillations(): DocSpec {
 // ---------------------------------------------------------------- circuits
 function circuits(): DocSpec {
   return {
-    meta: meta("DC Circuits & Ohm's Law", 'Resistors, Kirchhoff’s rules and power', 'sunset', { style: 'modern', font: 'sans', kicker: 'Physics · Electricity', cover: true, coverStyle: 'grid' }),
+    meta: meta("DC Circuits & Ohm's Law", 'Resistors, Kirchhoff’s rules and power', 'clay', { style: 'modern', font: 'sans', kicker: 'Physics · Electricity', cover: true, coverStyle: 'grid' }),
     blocks: [
       H(1, 'Current, voltage and resistance'),
       P('An electric current $I$ is the rate at which charge flows, $I = dQ/dt$, measured in amperes. A potential difference $V$ drives the current, and the resistance $R$ of a component sets how much current flows for a given voltage.'),
@@ -302,7 +302,7 @@ function circuits(): DocSpec {
 // ---------------------------------------------------------------- optics
 function optics(): DocSpec {
   return {
-    meta: meta('Geometric Optics: Thin Lenses', 'Ray diagrams, the lens equation and magnification', 'midnight', { kicker: 'Physics · Optics' }),
+    meta: meta('Geometric Optics: Thin Lenses', 'Ray diagrams, the lens equation and magnification', 'lake', { kicker: 'Physics · Optics' }),
     blocks: [
       BOX('abstract', undefined, 'When light passes through a thin lens it is refracted so that rays from one object point meet again at an image point. Three principal rays are enough to locate the image graphically, and the thin-lens equation does the same algebraically.'),
       H(1, 'Ray diagram for a converging lens'),
