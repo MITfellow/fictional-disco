@@ -5,17 +5,29 @@ import { grade } from './color';
 
 const STYLE_KEYS = ['color', 'backgroundColor', 'borderColor', 'borderTopColor', 'borderBottomColor', 'borderLeftColor', 'borderRightColor', 'textDecorationColor'];
 const PROP_KEYS = ['fill', 'stroke', 'stopColor', 'color'];
+const SVG_NUMBER_STRINGS = new Set(['d', 'points', 'transform', 'viewBox', 'strokeDasharray']);
+const PDF_LIMIT = 100_000;
+const safeNumber = (n: number) => (Number.isFinite(n) ? Math.max(-PDF_LIMIT, Math.min(PDF_LIMIT, n)) : 0);
+const safeNumberString = (value: string) => value.replace(/[-+]?(?:\d*\.\d+|\d+\.?)(?:e[-+]?\d+)?/gi, (token) => String(safeNumber(Number(token))));
 
 function gradeStyle(st: unknown): unknown {
   if (!st) return st;
   if (Array.isArray(st)) return st.map(gradeStyle);
   if (typeof st !== 'object') return st;
+  const source = st as Record<string, unknown>;
   let out: Record<string, unknown> | null = null;
+  // Numeric overflow can also arrive through absolute-position styles.
+  for (const [k, v] of Object.entries(source)) {
+    if (typeof v === 'number') {
+      const n = safeNumber(v);
+      if (n !== v) (out ??= { ...source })[k] = n;
+    }
+  }
   for (const k of STYLE_KEYS) {
-    const v = (st as Record<string, unknown>)[k];
+    const v = source[k];
     if (v === undefined) continue;
     const g = grade(v);
-    if (g !== v) (out ??= { ...(st as Record<string, unknown>) })[k] = g;
+    if (g !== v) (out ??= { ...source })[k] = g;
   }
   return out ?? st;
 }
@@ -24,6 +36,12 @@ function wrap<T>(C: T, svg = false): T {
   const W = (props: Record<string, unknown>) => {
     const p: Record<string, unknown> = { ...props };
     if (p.style) p.style = gradeStyle(p.style);
+    // Final safety boundary before values reach PDFKit. This covers every SVG
+    // producer, including MathJax and future diagram engines.
+    for (const [k, v] of Object.entries(p)) {
+      if (typeof v === 'number') p[k] = safeNumber(v);
+      else if (svg && typeof v === 'string' && SVG_NUMBER_STRINGS.has(k)) p[k] = safeNumberString(v);
+    }
     if (svg) for (const k of PROP_KEYS) if (p[k] !== undefined) p[k] = grade(p[k]);
     return createElement(C as unknown as ComponentType, p);
   };
