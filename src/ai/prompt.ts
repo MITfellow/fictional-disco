@@ -72,7 +72,7 @@ Inside JSON strings every LaTeX backslash must be doubled: "\\frac{a}{b}", "\\th
 
 # Quality bar
 - Write real, specific, correct content: derivations, realistic numbers and correct units. Never use lorem ipsum. Long, detailed documents are welcome.
-- Physics and maths: state laws in boxes, derive key results with numbered equations, show at least one plot of the relationship, draw the physical setup as a figure (free-body diagram, circuit, ray diagram, field, trajectory), add a worked example as a box "problem" followed by steps, and end with a summary/key box. Use style "academic" unless told otherwise.
+- Physics and maths: state laws in boxes, derive key results with numbered equations, show at least one plot of the relationship, draw the physical setup as a figure (free-body diagram, circuit, ray diagram, field, trajectory), add a worked example as a box "problem" followed by steps, and end with a summary/key box. Use style "academic" unless told otherwise. Make figures textbook-quality: use a clear coordinate system, realistic relative geometry, thin consistent strokes, no overlapping labels, arrowheads on vectors, symbols with units, restrained semantic colour, generous whitespace, and only elements that explain the concept. Prefer one focused figure over a crowded composite.
 - Figures: plan the coordinates carefully so nothing overlaps; keep a margin of about 4 units; make arrows long enough for their labels; resolve vectors with dashed component lines.
 - Business/general: style "modern"; use KPI cards, charts, diagrams, tables, timelines and callouts.
 - Reports/notes > 3 pages: cover:true (pick a fitting coverStyle) plus toc and numberedHeadings. Letters, invoices and résumés: no cover, no toc.

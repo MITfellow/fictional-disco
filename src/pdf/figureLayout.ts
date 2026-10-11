@@ -24,7 +24,7 @@ const rot = (p: P, c: P, deg: number): P => {
 };
 const lerp = (a: P, b: P, t: number): P => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
 
-export function layoutFigure(b: FigureBlock, theme: PdfTheme, maxW: number, maxH: number): Scene {
+export function layoutFigure(b: FigureBlock, theme: PdfTheme, maxW: number, maxH: number, natural = true): Scene {
   const W = Math.max(1, b.width);
   const H = Math.max(1, b.height);
   const pad = 14;
@@ -34,8 +34,11 @@ export function layoutFigure(b: FigureBlock, theme: PdfTheme, maxW: number, maxH
   const shapes: Shape[] = [];
   const labels: Label[] = [];
   const palette = theme.palette;
+  // Use the document's ink in natural mode so scientific drawings feel printed,
+  // not pasted in from a separate bright UI palette.
+  const ink = natural ? theme.text : INK;
 
-  const color = (e: FigElement, d = INK) => (isHex(e.color) ? e.color! : e.color && /^[a-z]+$/i.test(e.color) ? cssColor(e.color, theme) : d);
+  const color = (e: FigElement, d = ink) => (isHex(e.color) ? e.color! : e.color && /^[a-z]+$/i.test(e.color) ? cssColor(e.color, theme) : d);
   const fillOf = (e: FigElement, d?: string) => (e.fill === 'none' ? undefined : isHex(e.fill) ? e.fill : e.fill ? cssColor(e.fill, theme) : d);
   const sw = (e: FigElement, d = 1.15) => (e.width && e.width > 0 && e.width < 8 ? e.width : d);
   const dash = (e: FigElement) => (e.dashed ? '4 3' : undefined);
@@ -67,7 +70,7 @@ export function layoutFigure(b: FigureBlock, theme: PdfTheme, maxW: number, maxH
         align = 'left';
         break;
     }
-    labels.push({ x, y, w, h, text: s, size, color: opts.color ?? INK, align, valign: 'middle', rich: true, weight: opts.weight, bg: opts.bg });
+    labels.push({ x, y, w, h, text: s, size, color: opts.color ?? ink, align, valign: 'middle', rich: true, weight: opts.weight, bg: opts.bg });
   };
   // label beside a segment (perpendicular offset, on the left of the direction of travel)
   const sideLabel = (s: string | undefined, a: P, c: P, e: FigElement, off = 9, t = 0.5) => {
@@ -172,7 +175,7 @@ export function layoutFigure(b: FigureBlock, theme: PdfTheme, maxW: number, maxH
           if (!e.from) break;
           const to = e.to ?? (e.length ? add(e.from as P, e.length as P) : null);
           if (!to) break;
-          const def = t === 'arrow' ? INK : palette[autoColor++ % palette.length];
+          const def = t === 'arrow' ? ink : palette[autoColor++ % palette.length];
           const col = color(e, def);
           const w = sw(e, t === 'arrow' ? 1.3 : 1.9);
           const a = S(e.from);
@@ -201,7 +204,7 @@ export function layoutFigure(b: FigureBlock, theme: PdfTheme, maxW: number, maxH
             [center[0] - size[0] / 2, center[1] + size[1] / 2],
           ].map((p) => (e.rotate ? rot(p as P, center, e.rotate) : (p as P)));
           const isMass = t === 'block' || t === 'mass';
-          shapes.push({ kind: 'polygon', points: corners.map(S), fill: fillOf(e, isMass ? tint(theme.primary, 0.78) : undefined) ?? 'none', stroke: color(e, isMass ? theme.primaryDark : INK), sw: sw(e, 1.2) });
+          shapes.push({ kind: 'polygon', points: corners.map(S), fill: fillOf(e, isMass ? tint(theme.primary, 0.78) : undefined) ?? 'none', stroke: color(e, isMass ? theme.primaryDark : ink), sw: sw(e, 1.2) });
           if (e.label || e.text) text(e.label ?? e.text ?? '', S(center), { size: e.fontSize ?? 10, color: isMass ? theme.primaryDark : color(e), weight: 700 });
           break;
         }
@@ -215,10 +218,10 @@ export function layoutFigure(b: FigureBlock, theme: PdfTheme, maxW: number, maxH
           const isQ = t === 'charge';
           const neg = isQ && /−|-/.test(e.label ?? e.text ?? e.kind ?? '');
           const def = t === 'circle' ? undefined : isQ ? (neg ? '#dbeafe' : '#fee2e2') : tint(theme.primary, 0.55);
-          shapes.push({ kind: 'circle', cx: S(c)[0], cy: S(c)[1], r, fill: fillOf(e, def) ?? 'none', stroke: color(e, isQ ? (neg ? '#2563eb' : '#dc2626') : t === 'circle' ? INK : theme.primaryDark), sw: sw(e, 1.2), opacity: 1 });
+          shapes.push({ kind: 'circle', cx: S(c)[0], cy: S(c)[1], r, fill: fillOf(e, def) ?? 'none', stroke: color(e, isQ ? (neg ? palette[2] : palette[3]) : t === 'circle' ? ink : theme.primaryDark), sw: sw(e, 1.2), opacity: 1 });
           if (e.label || e.text) {
             const inside = isQ || (r > 9 && (e.labelPos ?? 'center') === 'center');
-            text(e.label ?? e.text ?? '', inside ? S(c) : add(S(c), [0, 0]), { pos: inside ? undefined : e.labelPos ?? 'above', size: e.fontSize ?? (isQ ? 11 : 9), color: isQ ? (neg ? '#1d4ed8' : '#b91c1c') : color(e), weight: isQ ? 700 : 400 });
+            text(e.label ?? e.text ?? '', inside ? S(c) : add(S(c), [0, 0]), { pos: inside ? undefined : e.labelPos ?? 'above', size: e.fontSize ?? (isQ ? 11 : 9), color: isQ ? (neg ? palette[2] : palette[3]) : color(e), weight: isQ ? 700 : 400 });
             if (!inside && (e.labelPos ?? 'above') === 'above') labels[labels.length - 1].y -= r;
           }
           break;
@@ -237,7 +240,7 @@ export function layoutFigure(b: FigureBlock, theme: PdfTheme, maxW: number, maxH
           const pts = e.points?.length ? e.points.map((p) => S(p)) : null;
           if (!pts) break;
           const fill = fillOf(e, t === 'incline' || t === 'wedge' ? '#e2e8f0' : undefined);
-          shapes.push({ kind: 'polygon', points: pts, fill: fill ?? 'none', stroke: color(e, t === 'incline' || t === 'wedge' ? '#475569' : INK), sw: sw(e, 1.2) });
+          shapes.push({ kind: 'polygon', points: pts, fill: fill ?? 'none', stroke: color(e, t === 'incline' || t === 'wedge' ? theme.muted : ink), sw: sw(e, 1.2) });
           if (e.label) {
             const cx = pts.reduce((s, p) => s + p[0], 0) / pts.length;
             const cy = pts.reduce((s, p) => s + p[1], 0) / pts.length;

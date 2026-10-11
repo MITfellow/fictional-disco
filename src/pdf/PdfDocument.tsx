@@ -886,7 +886,7 @@ function BlockView({ b, ctx }: { b: Block; ctx: Ctx }): ReactNode {
       );
     }
     case 'figure': {
-      const scene = layoutFigure(b, theme, ctx.contentW - 26, ctx.contentH * 0.55);
+      const scene = layoutFigure(b, theme, ctx.contentW - 26, ctx.contentH * 0.55, !ctx.vivid);
       return (
         <View wrap={false} style={{ marginVertical: 10 }}>
           <FigureCard ctx={ctx}>
@@ -1135,7 +1135,7 @@ function SideFigure({ g, ctx }: { g: Block[]; ctx: Ctx }) {
   const gap = 18;
   const figW = Math.round(ctx.contentW * Math.min(0.55, Math.max(0.28, (f.scale ?? 42) / 100)));
   const textW = ctx.contentW - figW - gap;
-  const scene = layoutFigure({ ...f, scale: 100 }, ctx.theme, figW, ctx.contentH * 0.5);
+  const scene = layoutFigure({ ...f, scale: 100 }, ctx.theme, figW, ctx.contentH * 0.5, !ctx.vivid);
   const figCol = (
     <View style={{ width: figW, alignItems: 'center' }}>
       <FigureCard ctx={ctx}>
