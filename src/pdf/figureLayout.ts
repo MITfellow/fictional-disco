@@ -634,11 +634,19 @@ export function layoutFigure(b: FigureBlock, theme: PdfTheme, maxW: number, maxH
                 for (let it = 0; it < 900; it++) {
                   const r1 = sub(q, N);
                   const r2 = sub(q, Sp);
-                  const d1 = Math.pow(len(r1), 3) || 1e-6;
-                  const d2 = Math.pow(len(r2), 3) || 1e-6;
+                  // Clamp the inverse-cube singularity close to either pole.
+                  // Without this floor, a perfectly valid field line can create
+                  // a finite but astronomical value that PDFKit rejects.
+                  const poleFloor = Math.max(1e-3, Math.pow(Math.max(0.08, Math.min(hw, hh) * 0.02), 3));
+                  const d1 = Math.max(poleFloor, Math.pow(len(r1), 3));
+                  const d2 = Math.max(poleFloor, Math.pow(len(r2), 3));
                   const f: P = [r1[0] / d1 - r2[0] / d2, r1[1] / d1 - r2[1] / d2];
-                  const u = unit(f);
-                  q = add(q, mul(u, step));
+                  const fm = len(f);
+                  if (!Number.isFinite(fm) || fm < 1e-12) break;
+                  const u: P = [f[0] / fm, f[1] / fm];
+                  const next = add(q, mul(u, step));
+                  if (!Number.isFinite(next[0]) || !Number.isFinite(next[1]) || Math.abs(next[0]) > W * 4 || Math.abs(next[1]) > H * 4) break;
+                  q = next;
                   if (len(sub(q, Sp)) < hh * 0.55 || !inBox(q)) break;
                   if (!inside(q)) pts.push(q);
                   else if (pts.length > 4) break;
