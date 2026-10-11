@@ -161,16 +161,34 @@ export default function App() {
     dispatch({ type: 'clearChat' });
   }, [setDoc, dispatch]);
 
-  const download = useCallback(() => {
+  const download = useCallback(async () => {
     if (!lastBlob.current) return;
-    const url = URL.createObjectURL(lastBlob.current);
+    const filename = `${slug(doc.meta.title)}.pdf`;
+    const blob = lastBlob.current;
+    // Prefer the native Save dialog. Unlike anchor downloads, this works in
+    // embedded/sandboxed app previews when the browser supports it.
+    const picker = (window as unknown as { showSaveFilePicker?: (options: unknown) => Promise<{ createWritable: () => Promise<{ write: (data: Blob) => Promise<void>; close: () => Promise<void> }> }> }).showSaveFilePicker;
+    if (picker) {
+      try {
+        const handle = await picker.call(window, { suggestedName: filename, types: [{ description: 'PDF document', accept: { 'application/pdf': ['.pdf'] } }] });
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        // SecurityError in an iframe: continue to the browser fallback.
+      }
+    }
+    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${slug(doc.meta.title)}.pdf`;
+    a.download = filename;
+    a.target = '_self';
     document.body.appendChild(a);
     a.click();
     a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }, [doc.meta.title]);
 
   const saveProject = useCallback(() => {
@@ -344,18 +362,10 @@ export default function App() {
           <Tooltip content="AI settings" relationship="label">
             <ToolbarButton type="button" icon={<Settings20Regular />} onClick={() => setSettingsOpen(true)} />
           </Tooltip>
-          <a
-            className={`native-download ${pdfUrl ? '' : 'disabled'}`}
-            href={pdfUrl ?? undefined}
-            download={`${slug(doc.meta.title)}.pdf`}
-            target="_blank"
-            rel="noopener"
-            aria-disabled={!pdfUrl}
-            onClick={(e) => { if (!pdfUrl) e.preventDefault(); }}
-          >
+          <button type="button" className="native-download" disabled={!pdfUrl} onClick={() => void download()}>
             <ArrowDownload20Regular />
             <span>Download PDF</span>
-          </a>
+          </button>
         </Toolbar>
       </header>
 
