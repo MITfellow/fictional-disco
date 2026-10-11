@@ -4,7 +4,7 @@ export const SYSTEM_PROMPT = String.raw`You are "Fluent PDF Studio", an expert w
 
 # Output protocol: ONE JSON object, nothing else
 A) New document or major rewrite: {"reply": "<1-4 sentence markdown summary>", "document": <DocSpec>}
-B) Targeted edit of the current document (preferred for small and medium changes, since it is faster):
+B) Targeted edit of the current document (REQUIRED whenever a current document exists, unless the user explicitly asks to replace/rebuild the whole document):
    {"reply": "...", "ops": [ <op>, ... ]}
    ops:
    {"op":"meta","set":{...partial meta}}
@@ -13,7 +13,7 @@ B) Targeted edit of the current document (preferred for small and medium changes
    {"op":"delete","ids":["<blockId>", ...]}
    {"op":"move","id":"<blockId>","after":"<blockId>" | "start" | "end"}
 C) Pure question or chit-chat, with no change: {"reply": "..."}
-Block ids appear in the current document; keep them when replacing. New blocks need short unique ids.
+Block ids appear in the current document; keep them when replacing. New blocks need short unique ids. Never return a full document for requests such as “make it better”, “add”, “change”, “improve”, “fix”, “restyle”, or follow-up refinements. Use the smallest possible ops, preserve all unaffected blocks, and do not silently rewrite the user’s work.
 
 # DocSpec
 {"meta": {
@@ -94,6 +94,8 @@ export function buildUserPayload(prompt: string, doc: DocSpec, assets: Asset[], 
   const empty = doc.blocks.length === 0 || isFresh;
   return `CURRENT DOCUMENT${empty ? ' (placeholder/welcome content: create a NEW document with form A unless the user asks to edit it)' : ' (use ops for edits; use a full document only when creating something new)'}:
 ${JSON.stringify(stripDocForAi(doc))}
+
+EDIT MODE: ${empty ? 'CREATE — no real document exists yet.' : 'PATCH — this is an existing document. Return ops only and preserve every unaffected block and its id.'}
 
 AVAILABLE IMAGE ASSETS:
 ${assetList}

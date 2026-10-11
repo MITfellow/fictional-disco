@@ -87,6 +87,28 @@ export function applyOps(doc: DocSpec, ops: Op[]): DocSpec {
   return out;
 }
 
+
+/** Preserve identity when a provider ignores edit mode and sends a full document.
+ * Stable ids make undo, diffs and later targeted edits continue to work. */
+function stabilizeBlockIds(current: DocSpec, next: DocSpec): DocSpec {
+  const used = new Set<string>();
+  const byId = new Map(current.blocks.map((b) => [b.id, b]));
+  const blocks = next.blocks.map((block, i) => {
+    if (byId.has(block.id) && !used.has(block.id)) {
+      used.add(block.id);
+      return block;
+    }
+    const positional = current.blocks[i];
+    const match = positional?.type === block.type && !used.has(positional.id)
+      ? positional
+      : current.blocks.find((b) => b.type === block.type && !used.has(b.id));
+    if (!match) return block;
+    used.add(match.id);
+    return { ...block, id: match.id } as Block;
+  });
+  return { ...next, blocks };
+}
+
 export async function runAssistant(args: RunArgs): Promise<EngineResult & { engine: string }> {
   const { settings } = args;
   if (settings.provider === 'local' || (!settings.apiKey && settings.provider !== 'custom')) {
@@ -104,7 +126,10 @@ export async function runAssistant(args: RunArgs): Promise<EngineResult & { engi
   }
   const json = fixTexDeep(parsed) as { reply?: string; document?: unknown; meta?: unknown; blocks?: unknown; ops?: Op[] };
   let doc = args.doc;
-  if (json.document || json.blocks) doc = normalizeDoc(json.document ?? json, args.doc);
+  if (json.document || json.blocks) {
+    const full = normalizeDoc(json.document ?? json, args.doc);
+    doc = args.isFresh ? full : stabilizeBlockIds(args.doc, full);
+  }
   else if (Array.isArray(json.ops)) doc = applyOps(args.doc, json.ops);
   // keep real data URLs for images the AI saw as "asset:inline"
   doc.blocks = doc.blocks.map((b) => {
