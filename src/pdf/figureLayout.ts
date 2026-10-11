@@ -613,10 +613,7 @@ export function layoutFigure(b: FigureBlock, theme: PdfTheme, maxW: number, maxH
           const NCOL = '#b8605a';
           const SCOL = '#5f7d9c';
           // field lines (two opposite poles, traced numerically) drawn underneath the body
-          // Disabled: numerical field-line tracing can diverge near a pole and
-          // feed astronomically large coordinates to PDFKit. Explicit field
-          // arrows remain available and are stable for teaching diagrams.
-          const nLines = 0;
+          const nLines = Math.max(0, Math.min(8, Math.round(e.lines ?? 0)));
           if (nLines && (kind === 'NS' || kind === 'SN')) {
             const a = hw - Math.min(hh * 0.5, hw * 0.3);
             const sgn = kind === 'NS' ? 1 : -1; // N at -a*sgn
