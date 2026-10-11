@@ -1,17 +1,18 @@
 // Offline physics / science notes — showcases equations, plots, drawings, boxes and worked steps.
 import type { Block, DocSpec, FigElement, ThemeName } from '../types';
 import { DEFAULT_META, today, uid } from '../normalize';
+import { induction } from './induction';
 
-const H = (level: 1 | 2 | 3, text: string): Block => ({ id: uid(), type: 'heading', level, text });
-const P = (text: string, lead = false): Block => ({ id: uid(), type: 'paragraph', text, lead });
-const L = (items: string[], ordered = false): Block => ({ id: uid(), type: 'list', items, ordered });
-const EQ = (latex: string, label?: string): Block => ({ id: uid(), type: 'equation', latex, numbered: true, label });
-const BOX = (variant: Extract<Block, { type: 'box' }>['variant'], title: string | undefined, text?: string, blocks: Block[] = []): Block => ({ id: uid(), type: 'box', variant, title, text, blocks });
-const STEPS = (items: { text?: string; math?: string }[], title?: string): Block => ({ id: uid(), type: 'steps', title, items });
-const FIG = (width: number, height: number, elements: FigElement[], caption?: string, scale?: number): Block => ({ id: uid(), type: 'figure', width, height, elements, caption, scale });
-const TABLE = (headers: string[], rows: string[][], caption?: string): Block => ({ id: uid(), type: 'table', headers, rows, caption, striped: true });
+export const H = (level: 1 | 2 | 3, text: string): Block => ({ id: uid(), type: 'heading', level, text });
+export const P = (text: string, lead = false): Block => ({ id: uid(), type: 'paragraph', text, lead });
+export const L = (items: string[], ordered = false): Block => ({ id: uid(), type: 'list', items, ordered });
+export const EQ = (latex: string, label?: string): Block => ({ id: uid(), type: 'equation', latex, numbered: true, label });
+export const BOX = (variant: Extract<Block, { type: 'box' }>['variant'], title: string | undefined, text?: string, blocks: Block[] = []): Block => ({ id: uid(), type: 'box', variant, title, text, blocks });
+export const STEPS = (items: { text?: string; math?: string }[], title?: string): Block => ({ id: uid(), type: 'steps', title, items });
+export const FIG = (width: number, height: number, elements: FigElement[], caption?: string, scale?: number, side?: 'left' | 'right', beside?: number): Block => ({ id: uid(), type: 'figure', width, height, elements, caption, scale, side, beside });
+export const TABLE = (headers: string[], rows: string[][], caption?: string): Block => ({ id: uid(), type: 'table', headers, rows, caption, striped: true });
 
-const meta = (title: string, subtitle: string, theme: ThemeName, extra: Partial<DocSpec['meta']> = {}): DocSpec['meta'] => ({
+export const meta = (title: string, subtitle: string, theme: ThemeName, extra: Partial<DocSpec['meta']> = {}): DocSpec['meta'] => ({
   ...DEFAULT_META,
   title,
   subtitle,
@@ -24,10 +25,11 @@ const meta = (title: string, subtitle: string, theme: ThemeName, extra: Partial<
   ...extra,
 });
 
-export type ScienceTopic = 'projectile' | 'forces' | 'oscillations' | 'circuits' | 'optics';
+export type ScienceTopic = 'projectile' | 'forces' | 'oscillations' | 'circuits' | 'optics' | 'induction';
 
 export function detectScienceTopic(text: string): ScienceTopic | null {
   const t = text.toLowerCase();
+  if (/induction|faraday|lenz|inductance|inductor|\bemi\b|eddy|generator|magnetic flux|solenoid/.test(t)) return 'induction';
   if (/projectile|kinematic|trajector|free fall|motion in (two|2) dimensions|parabolic/.test(t)) return 'projectile';
   if (/newton|force|friction|incline|free[- ]body|dynamics|tension/.test(t)) return 'forces';
   if (/harmonic|oscillat|pendulum|spring|shm|vibration|wave/.test(t)) return 'oscillations';
@@ -41,7 +43,7 @@ export function isScienceRequest(text: string) {
 }
 
 export function buildScienceNotes(topic: ScienceTopic, opts: { theme?: ThemeName; style?: 'modern' | 'academic' } = {}): DocSpec {
-  const build = { projectile, forces, oscillations, circuits, optics }[topic];
+  const build = { projectile, forces, oscillations, circuits, optics, induction }[topic];
   const doc = build();
   if (opts.theme) doc.meta.theme = opts.theme;
   if (opts.style) {

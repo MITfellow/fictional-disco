@@ -62,9 +62,10 @@ function normalizeElement(raw: unknown): FigElement | null {
     if (p) el[k] = p;
   }
   if (Array.isArray(e.points)) el.points = e.points.map(pt).filter((p): p is Pt => !!p);
-  for (const k of ['r', 'rx', 'ry', 'startAngle', 'endAngle', 'rotate', 'width', 'fontSize', 'amplitude', 'wavelength', 'coils', 'height'] as const)
+  for (const k of ['r', 'rx', 'ry', 'startAngle', 'endAngle', 'rotate', 'width', 'fontSize', 'amplitude', 'wavelength', 'coils', 'height', 'lines'] as const)
     if (e[k] != null && Number.isFinite(num(e[k], NaN))) el[k] = num(e[k]);
   if (e.radius != null && el.r == null) el.r = num(e.radius);
+  if (e.turns != null && el.coils == null) el.coils = num(e.turns);
   for (const k of ['text', 'label', 'color', 'fill', 'kind'] as const) if (e[k] != null && str(e[k])) el[k] = str(e[k]);
   if (e.type && e.kind && type !== str(e.kind).toLowerCase()) el.kind = str(e.kind);
   const lp = str(e.labelPos ?? e.anchor);
@@ -74,7 +75,7 @@ function normalizeElement(raw: unknown): FigElement | null {
   if (e.dashed) el.dashed = true;
   if (e.smooth) el.smooth = true;
   if (e.closed) el.closed = true;
-  if (!el.from && el.points?.length && ['line', 'arrow', 'vector', 'spring', 'resistor', 'capacitor', 'battery', 'inductor', 'bulb', 'switch', 'source', 'meter', 'dimension', 'wave', 'ground'].includes(type) && el.points.length >= 2) {
+  if (!el.from && el.points?.length && ['line', 'arrow', 'vector', 'spring', 'resistor', 'capacitor', 'battery', 'inductor', 'bulb', 'switch', 'source', 'meter', 'dimension', 'wave', 'ground', 'solenoid'].includes(type) && el.points.length >= 2) {
     el.from = el.points[0];
     el.to = el.points[el.points.length - 1];
   }
@@ -196,7 +197,7 @@ export function normalizeBlock(raw: unknown): Block | null {
     case 'figure': {
       const elements = arr<unknown>(r.elements ?? r.shapes ?? r.items).map(normalizeElement).filter((e): e is FigElement => !!e).slice(0, 400);
       if (!elements.length) return null;
-      return { id, type, width: Math.max(1, num(r.width, 100)), height: Math.max(1, num(r.height, 60)), elements, caption: opt(r.caption), scale: Number(r.scale) ? Math.max(10, Math.min(100, Number(r.scale))) : undefined };
+      return { id, type, width: Math.max(1, num(r.width, 100)), height: Math.max(1, num(r.height, 60)), elements, caption: opt(r.caption), scale: Number(r.scale) ? Math.max(10, Math.min(100, Number(r.scale))) : undefined, side: r.side === 'left' || r.side === 'right' ? r.side : undefined, beside: Number(r.beside) ? Math.max(1, Math.min(3, Math.round(Number(r.beside)))) : undefined };
     }
     case 'box': {
       let variant = str(r.variant ?? r.kind ?? r.style ?? (origType !== 'box' ? origType : 'note')).toLowerCase() as BoxVariant;

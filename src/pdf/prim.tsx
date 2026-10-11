@@ -31,7 +31,10 @@ function wrap<T>(C: T, svg = false): T {
 }
 
 export const View = wrap(R.View);
-export const Text = wrap(R.Text);
+const GradedText = wrap(R.Text);
+// Never break inside a word: a bold word followed by punctuation is split into two runs,
+// and the line breaker would otherwise hyphenate between them ("other-;").
+export const Text = ((props: Record<string, unknown>) => createElement(GradedText as unknown as ComponentType<Record<string, unknown>>, { hyphenationPenalty: 10000, ...props })) as unknown as typeof R.Text;
 export const Link = wrap(R.Link);
 export const Image = R.Image;
 export const Svg = wrap(R.Svg, true);

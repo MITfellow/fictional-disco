@@ -43,12 +43,16 @@ interface Ctx {
   vivid: boolean;
   paper: string;
   ty: { body: number; lh: number; para: number; k: number };
+  /** book-style paragraphs: indent ids follow a paragraph, tight ids precede one */
+  indent?: Set<string>;
+  tight?: Set<string>;
 }
 
 const DENSITY = {
-  compact: { body: 10, lh: 1.5, para: 6, k: 0.8, px: 48, py: 50 },
-  comfortable: { body: 10.5, lh: 1.62, para: 9, k: 1, px: 62, py: 62 },
-  airy: { body: 11, lh: 1.75, para: 12, k: 1.3, px: 74, py: 72 },
+  // Measures tuned for ~65–75 characters per line, like a well-set book.
+  compact: { body: 9.9, lh: 1.5, para: 5.5, k: 0.82, px: 52, py: 52 },
+  comfortable: { body: 10.6, lh: 1.6, para: 8, k: 1, px: 70, py: 64 },
+  airy: { body: 11.2, lh: 1.72, para: 11, k: 1.25, px: 80, py: 74 },
 } as const;
 
 // ------------------------------------------------------------------ inline
@@ -131,11 +135,11 @@ function Heading({ b, ctx }: { b: Extract<Block, { type: 'heading' }>; ctx: Ctx 
   );
   const k = ctx.ty.k;
   if (ctx.minimal) {
-    const sz = b.level === 1 ? 16 : b.level === 2 ? 12.5 : 11;
+    const sz = b.level === 1 ? 15.5 : b.level === 2 ? 12.2 : 10.8;
     return (
-      <View id={b.id} minPresenceAhead={60} style={{ marginTop: (b.level === 1 ? 22 : 14) * k, marginBottom: (b.level === 1 ? 8 : 5) * k }}>
+      <View id={b.id} minPresenceAhead={60} style={{ marginTop: (b.level === 1 ? 24 : 15) * k, marginBottom: (b.level === 1 ? 7 : 4.5) * k }}>
         {tracker}
-        <Text style={{ fontSize: sz, fontWeight: b.level === 1 ? 700 : 600, color: b.level === 3 ? theme.muted : theme.text, lineHeight: 1.3, letterSpacing: b.level === 1 ? -0.2 : 0 }}>
+        <Text style={{ fontSize: sz, fontWeight: 600, color: b.level === 3 ? theme.muted : theme.text, lineHeight: 1.3, letterSpacing: b.level === 1 ? -0.2 : 0 }}>
           {num ? <Text style={{ color: theme.muted, fontWeight: 400 }}>{num.replace(/\.$/, '')}{'   '}</Text> : null}
           <Inline text={b.text} ctx={ctx} size={sz} />
         </Text>
@@ -143,12 +147,12 @@ function Heading({ b, ctx }: { b: Extract<Block, { type: 'heading' }>; ctx: Ctx 
     );
   }
   if (ctx.academic) {
-    const sz = b.level === 1 ? 15.5 : b.level === 2 ? 12.5 : 11;
+    const sz = b.level === 1 ? 15 : b.level === 2 ? 12.2 : 10.8;
     return (
-      <View id={b.id} minPresenceAhead={60} style={{ marginTop: (b.level === 1 ? 20 : 13) * k, marginBottom: (b.level === 1 ? 7 : 5) * k }}>
+      <View id={b.id} minPresenceAhead={60} style={{ marginTop: (b.level === 1 ? 22 : 14) * k, marginBottom: (b.level === 1 ? 7 : 4.5) * k }}>
         {tracker}
-        <Text style={{ fontSize: sz, fontWeight: 700, fontStyle: b.level === 3 ? 'italic' : 'normal', color: b.level === 1 ? theme.primaryDark : theme.text, lineHeight: 1.3 }}>
-          {num ? <Text>{num.replace(/\.$/, '')}{'   '}</Text> : null}
+        <Text style={{ fontSize: sz, fontWeight: 600, fontStyle: b.level === 3 ? 'italic' : 'normal', color: b.level === 1 ? theme.primaryDark : theme.text, lineHeight: 1.3 }}>
+          {num ? <Text style={{ color: b.level === 1 ? theme.primary : theme.muted }}>{num.replace(/\.$/, '')}{'   '}</Text> : null}
           <Inline text={b.text} ctx={ctx} size={sz} />
         </Text>
       </View>
@@ -364,7 +368,7 @@ function TableView({ b, ctx }: { b: TableBlock; ctx: Ctx }) {
       </View>
       {b.caption ? (
         <Text style={{ fontSize: 8.5, color: theme.muted, marginTop: 4, textAlign: 'center' }}>
-          <Text style={{ fontWeight: 700, color: theme.primary }}>Table {ctx.table.n}. </Text>
+          <Text style={{ fontWeight: 600, color: theme.primary }}>Table {ctx.table.n}. </Text>
           <Inline text={b.caption} ctx={ctx} size={8.5} />
         </Text>
       ) : null}
@@ -384,7 +388,7 @@ function Caption({ text, ctx }: { text?: string; ctx: Ctx }) {
     );
   return (
     <Text style={{ fontSize: 8.5, color: ctx.theme.muted, marginTop: 6, textAlign: 'center', lineHeight: 1.45 }}>
-      <Text style={{ fontWeight: 700, color: ctx.theme.primary }}>Figure {ctx.figure.n}. </Text>
+      <Text style={{ fontWeight: 600, color: ctx.theme.primary }}>Figure {ctx.figure.n}. </Text>
       <Inline text={text} ctx={ctx} size={8.5} />
     </Text>
   );
@@ -627,7 +631,8 @@ function BlockView({ b, ctx }: { b: Block; ctx: Ctx }): ReactNode {
             lineHeight: b.lead ? ctx.ty.lh - 0.05 : ctx.ty.lh,
             color: b.lead ? shade(theme.muted, 0.15) : theme.text,
             textAlign: b.align ?? 'left',
-            marginBottom: b.lead ? ctx.ty.para + 5 : ctx.ty.para,
+            textIndent: !b.lead && ctx.indent?.has(b.id) ? Math.round(ctx.ty.body * 1.5) : 0,
+            marginBottom: b.lead ? ctx.ty.para + 5 : ctx.tight?.has(b.id) ? Math.round(ctx.ty.para * 0.3) : ctx.ty.para,
           }}
         >
           <Inline text={b.text} ctx={ctx} size={b.lead ? ctx.ty.body + 2 : ctx.ty.body} />
@@ -1095,12 +1100,22 @@ function Toc({ doc, ctx }: { doc: DocSpec; ctx: Ctx }) {
 
 // Keep headings together with an unbreakable visual that follows them.
 const ATOMIC = new Set(['diagram', 'chart', 'image', 'kpis', 'callout', 'quote', 'columns', 'signature', 'equation', 'plot', 'figure']);
+const atomic = (x: Block) => ATOMIC.has(x.type) && !(x.type === 'figure' && x.side);
+const SIDE_OK = new Set(['paragraph', 'list', 'box', 'equation', 'steps']);
 function groupBlocks(blocks: Block[]): Block[][] {
   const out: Block[][] = [];
   for (let i = 0; i < blocks.length; i++) {
     const b = blocks[i];
     const next = blocks[i + 1];
-    if (b.type === 'heading' && next && ATOMIC.has(next.type)) {
+    const isSide = (x?: Block) => !!x && x.type === 'figure' && !!x.side;
+    if ((b.type === 'figure' && b.side && next && SIDE_OK.has(next.type)) || (b.type === 'heading' && isSide(next) && blocks[i + 2] && SIDE_OK.has(blocks[i + 2].type))) {
+      // figure beside up to three following text blocks (optionally led by its heading)
+      const g: Block[] = b.type === 'heading' ? [b, blocks[++i]] : [b];
+      const f = g[g.length - 1] as Extract<Block, { type: 'figure' }>;
+      const cap = g.length + Math.max(1, Math.min(3, Math.round(f.beside ?? 1)));
+      while (g.length < cap && blocks[i + 1] && SIDE_OK.has(blocks[i + 1].type)) g.push(blocks[++i]);
+      out.push(g);
+    } else if (b.type === 'heading' && next && atomic(next)) {
       out.push([b, next]);
       i++;
     } else if (b.type === 'heading' && next?.type === 'box' && boxContentLength(next) < 700) {
@@ -1109,12 +1124,40 @@ function groupBlocks(blocks: Block[]): Block[][] {
     } else if (b.type === 'paragraph' && next?.type === 'equation' && b.text.length < 220 && blocks[i - 1]?.type !== 'heading') {
       out.push([b, next]);
       i++;
-    } else if (b.type === 'heading' && next?.type === 'paragraph' && blocks[i + 2] && ATOMIC.has(blocks[i + 2].type) && next.text.length < 260) {
-      out.push([b, next, blocks[i + 2]]);
-      i += 2;
     } else out.push([b]);
   }
   return out;
+}
+
+// A figure set beside the text that follows it, like a textbook margin figure.
+function SideFigure({ g, ctx }: { g: Block[]; ctx: Ctx }) {
+  const f = g[0] as Extract<Block, { type: 'figure' }>;
+  const gap = 18;
+  const figW = Math.round(ctx.contentW * Math.min(0.55, Math.max(0.28, (f.scale ?? 42) / 100)));
+  const textW = ctx.contentW - figW - gap;
+  const scene = layoutFigure({ ...f, scale: 100 }, ctx.theme, figW, ctx.contentH * 0.5);
+  const figCol = (
+    <View style={{ width: figW, alignItems: 'center' }}>
+      <FigureCard ctx={ctx}>
+        <SceneView scene={scene} font={ctx.font} rich={rich(ctx)} />
+      </FigureCard>
+      <Caption text={f.caption} ctx={{ ...ctx, contentW: figW }} />
+    </View>
+  );
+  const tctx: Ctx = { ...ctx, contentW: textW };
+  const textCol = (
+    <View style={{ width: textW }}>
+      {g.slice(1).map((b) => (
+        <BlockView key={b.id} b={b} ctx={tctx} />
+      ))}
+    </View>
+  );
+  return (
+    <View wrap={false} style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 6, justifyContent: 'space-between' }}>
+      {f.side === 'left' ? figCol : textCol}
+      {f.side === 'left' ? textCol : figCol}
+    </View>
+  );
 }
 
 // --------------------------------------------------------------- document
@@ -1169,11 +1212,27 @@ export function PdfDocument({ doc: rawDoc, opts }: { doc: DocSpec; opts: RenderO
   }
   const minimal = m.style === 'minimal';
   const academic = m.style === 'academic' || minimal;
+  // Book-style paragraphing for serif academic text: consecutive paragraphs
+  // sit close together and the second one gets a first-line indent.
+  const indent = new Set<string>();
+  const tight = new Set<string>();
+  if (academic && m.font === 'serif') {
+    doc.blocks.forEach((b, i) => {
+      const nx = doc.blocks[i + 1];
+      const isP = (x?: Block) => !!x && x.type === 'paragraph' && !x.lead && (x.align ?? 'left') !== 'center';
+      if (isP(b) && isP(nx)) {
+        tight.add(b.id);
+        indent.add(nx!.id);
+      }
+    });
+  }
   const ctx: Ctx = {
     minimal,
     vivid,
     paper,
     ty: { body: dens.body, lh: dens.lh, para: dens.para, k: dens.k },
+    indent,
+    tight,
     theme,
     font,
     academic,
@@ -1198,7 +1257,7 @@ export function PdfDocument({ doc: rawDoc, opts }: { doc: DocSpec; opts: RenderO
         {academic ? (
           <>
             {headerText ? (
-              <View fixed style={{ position: 'absolute', top: 26, left: PX, right: PX, flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 0.5, borderBottomColor: theme.border, paddingBottom: 4 }}>
+              <View fixed style={{ position: 'absolute', top: 26, left: PX, right: PX, flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 0.4, borderBottomColor: theme.border, paddingBottom: 4 }}>
                 <Text style={{ fontSize: 8, color: theme.muted, fontStyle: 'italic' }}>{headerText}</Text>
                 <Text style={{ fontSize: 8, color: theme.muted }}>{m.author ?? m.date ?? ''}</Text>
               </View>
@@ -1237,7 +1296,7 @@ export function PdfDocument({ doc: rawDoc, opts }: { doc: DocSpec; opts: RenderO
         {!m.cover && minimal ? (
           <View style={{ marginBottom: 22 * dens.k }}>
             {m.kicker ? <Text style={{ fontSize: 8, letterSpacing: 1.6, color: theme.muted, fontWeight: 600, marginBottom: 10 }}>{m.kicker.toUpperCase()}</Text> : null}
-            <Text style={{ fontSize: size[0] < 500 ? 21 : 25, fontWeight: 700, color: theme.text, lineHeight: 1.2, letterSpacing: -0.4 }}>{m.title}</Text>
+            <Text style={{ fontSize: size[0] < 500 ? 21 : 24, fontWeight: 600, color: theme.text, lineHeight: 1.22, letterSpacing: -0.3 }}>{m.title}</Text>
             {m.subtitle ? <Text style={{ fontSize: 12, color: theme.muted, marginTop: 7, lineHeight: 1.45 }}>{m.subtitle}</Text> : null}
             {m.author || m.date ? (
               <Text style={{ fontSize: 9, color: theme.muted, marginTop: 12 }}>
@@ -1250,11 +1309,11 @@ export function PdfDocument({ doc: rawDoc, opts }: { doc: DocSpec; opts: RenderO
         {!m.cover && academic && !minimal ? (
           <View style={{ marginBottom: 14, alignItems: 'center' }}>
             {m.kicker ? <Text style={{ fontSize: 8, letterSpacing: 1.8, color: theme.primary, fontWeight: 700, marginBottom: 8 }}>{m.kicker.toUpperCase()}</Text> : null}
-            <Text style={{ fontSize: size[0] < 500 ? 19 : 22, fontWeight: 700, color: theme.text, lineHeight: 1.25, textAlign: 'center' }}>{m.title}</Text>
+            <Text style={{ fontSize: size[0] < 500 ? 19 : 22, fontWeight: 600, color: theme.text, lineHeight: 1.25, textAlign: 'center', letterSpacing: -0.2 }}>{m.title}</Text>
             {m.subtitle ? <Text style={{ fontSize: 11.5, color: theme.muted, marginTop: 6, lineHeight: 1.4, textAlign: 'center', fontStyle: 'italic' }}>{m.subtitle}</Text> : null}
             {m.author ? <Text style={{ fontSize: 11, color: theme.text, marginTop: 10 }}>{m.author}</Text> : null}
             {m.date ? <Text style={{ fontSize: 9.5, color: theme.muted, marginTop: 3 }}>{m.date}</Text> : null}
-            <View style={{ alignSelf: 'stretch', height: 0.7, backgroundColor: vivid ? theme.text : theme.muted, marginTop: 14 }} />
+            <View style={{ alignSelf: 'stretch', height: 0.5, backgroundColor: vivid ? theme.text : theme.border, marginTop: 16 }} />
           </View>
         ) : null}
         {!m.cover && !academic ? (
@@ -1288,7 +1347,14 @@ export function PdfDocument({ doc: rawDoc, opts }: { doc: DocSpec; opts: RenderO
         ) : null}
 
         {groupBlocks(doc.blocks).map((g) =>
-          g.length === 1 ? (
+          g[0].type === 'figure' && g[0].side && g.length > 1 ? (
+            <SideFigure key={g[0].id} g={g} ctx={ctx} />
+          ) : g[0].type === 'heading' && g[1]?.type === 'figure' && g[1].side ? (
+            <View key={g[0].id} wrap={false}>
+              <BlockView b={g[0]} ctx={ctx} />
+              <SideFigure g={g.slice(1)} ctx={ctx} />
+            </View>
+          ) : g.length === 1 ? (
             <BlockView key={g[0].id} b={g[0]} ctx={ctx} />
           ) : (
             <View key={g[0].id} wrap={false}>

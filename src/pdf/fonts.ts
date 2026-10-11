@@ -24,18 +24,20 @@ const FACES: Record<string, Face[]> = {
     ['inter/files/inter-latin-ext-400-normal.woff', 400],
     ['inter/files/inter-latin-ext-700-normal.woff', 700],
   ],
-  'Source Serif': [
-    ['source-serif-4/files/source-serif-4-latin-400-normal.woff', 400],
-    ['source-serif-4/files/source-serif-4-latin-400-italic.woff', 400, 'italic'],
-    ['source-serif-4/files/source-serif-4-latin-600-normal.woff', 600],
-    ['source-serif-4/files/source-serif-4-latin-700-normal.woff', 700],
-    ['source-serif-4/files/source-serif-4-latin-700-italic.woff', 700, 'italic'],
+  Literata: [
+    ['literata/files/literata-latin-400-normal.woff', 400],
+    ['literata/files/literata-latin-400-italic.woff', 400, 'italic'],
+    ['literata/files/literata-latin-500-normal.woff', 500],
+    ['literata/files/literata-latin-600-normal.woff', 600],
+    ['literata/files/literata-latin-600-italic.woff', 600, 'italic'],
+    ['literata/files/literata-latin-700-normal.woff', 700],
+    ['literata/files/literata-latin-700-italic.woff', 700, 'italic'],
   ],
-  'Source Serif Greek': [
-    ['source-serif-4/files/source-serif-4-greek-400-normal.woff', 400],
-    ['source-serif-4/files/source-serif-4-greek-400-italic.woff', 400, 'italic'],
-    ['source-serif-4/files/source-serif-4-greek-700-normal.woff', 700],
-    ['source-serif-4/files/source-serif-4-greek-700-italic.woff', 700, 'italic'],
+  'Literata Greek': [
+    ['literata/files/literata-greek-400-normal.woff', 400],
+    ['literata/files/literata-greek-400-italic.woff', 400, 'italic'],
+    ['literata/files/literata-greek-700-normal.woff', 700],
+    ['literata/files/literata-greek-700-italic.woff', 700, 'italic'],
   ],
   STIX: [
     ['stix-two-text/files/stix-two-text-latin-400-normal.woff', 400],
@@ -88,7 +90,7 @@ export function registerFonts(resolve: (file: string) => string) {
 
 export const FAMILY: Record<FontName, string[]> = {
   sans: ['Inter', 'Inter Greek', 'Inter Ext', 'Noto Math'],
-  serif: ['Source Serif', 'Source Serif Greek', 'Inter Ext', 'Noto Math'],
+  serif: ['Literata', 'Literata Greek', 'Inter Ext', 'Noto Math'],
   mono: ['JetBrains Mono', 'Inter Greek', 'Inter Ext', 'Noto Math'],
 };
 

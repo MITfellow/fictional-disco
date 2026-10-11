@@ -20,6 +20,8 @@ An AI chatbot that designs and compiles real, vector PDFs while you watch. You c
   - `paper`: natural, cream or white;
   - `colors`: natural, mono or vivid;
   - `density`: compact, comfortable or airy, which changes margins, type size, line height and spacing.
+- **Book-like typography.** Serif documents are set in Literata, a warm reading face with a generous x-height. Lines are kept to a comfortable book measure. Consecutive paragraphs sit close together and later ones get a first-line indent. Headings are semibold, figure strokes are fine, and plot legends sit above the frame so they never cover a curve.
+- **Margin figures.** A figure with `side: "left" | "right"` sits beside the next 1 to 3 text blocks, like a textbook margin figure. Electromagnetism drawings include `magnet` (bar magnets and pole pieces with traced field lines), `solenoid` (a 3-D coil) and single `into` / `outof` symbols.
 - **Any level of design.** `minimal` is a quiet layout with almost no decoration, `academic` gives a LaTeX look, and `modern` uses cards, KPI tiles and accents. The AI picks the level that fits the request, and you can change it in plain words (*make it minimal with airy spacing*, *cream paper*, *black and white*).
 - **Calm UI.** Warm neutral surfaces, one quiet ink accent, outline icons, chat on the left and the live PDF on the right, plus undo/redo, a new-document button, warm dark mode and autosave.
 

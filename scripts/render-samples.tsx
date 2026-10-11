@@ -16,6 +16,7 @@ const docs: Record<string, DocSpec> = {
   shm: buildScienceNotes('oscillations'),
   circuits: buildScienceNotes('circuits'),
   optics: buildScienceNotes('optics'),
+  emi: buildScienceNotes('induction'),
   welcome: T.buildWelcome(),
   minimal: ((d) => ({ ...d, meta: { ...d.meta, style: 'minimal', density: 'airy', font: 'sans', theme: 'stone' } }))(buildScienceNotes('forces')) as DocSpec,
   minserif: ((d) => ({ ...d, meta: { ...d.meta, style: 'minimal', density: 'airy' } }))(buildScienceNotes('forces')) as DocSpec,

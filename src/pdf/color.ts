@@ -4,8 +4,8 @@
 // keeps any document (and anything an AI invents) easy on the eyes.
 import type { ColorMode, PaperTone } from '../types';
 
-export const PAPER: Record<PaperTone, string> = { natural: '#fbfaf6', cream: '#f7f2e6', white: '#ffffff' };
-const INK = [43, 41, 37]; // #2b2925
+export const PAPER: Record<PaperTone, string> = { natural: '#faf8f2', cream: '#f5efe1', white: '#ffffff' };
+const INK = [44, 41, 36]; // #2c2924
 
 type RGB = [number, number, number];
 
@@ -53,8 +53,8 @@ function natural(c: RGB, paper: RGB): RGB {
     // greys (often cold slate) → warm greys of the same lightness
     out = mix(c, fromHsl(38, 0.09, l), 0.75);
   } else {
-    // compress saturation above 0.42, pull extreme lightness in a little
-    const s2 = s > 0.42 ? 0.42 + (s - 0.42) * 0.3 : s;
+    // compress saturation above 0.36, pull extreme lightness in a little
+    const s2 = s > 0.36 ? 0.36 + (s - 0.36) * 0.28 : s;
     const l2 = l > 0.55 && l < 0.85 ? l - (l - 0.55) * 0.15 : l;
     out = fromHsl(h, s2, l2);
   }

@@ -37,7 +37,7 @@ export function layoutFigure(b: FigureBlock, theme: PdfTheme, maxW: number, maxH
 
   const color = (e: FigElement, d = INK) => (isHex(e.color) ? e.color! : e.color && /^[a-z]+$/i.test(e.color) ? cssColor(e.color, theme) : d);
   const fillOf = (e: FigElement, d?: string) => (e.fill === 'none' ? undefined : isHex(e.fill) ? e.fill : e.fill ? cssColor(e.fill, theme) : d);
-  const sw = (e: FigElement, d = 1.3) => (e.width && e.width > 0 && e.width < 8 ? e.width : d);
+  const sw = (e: FigElement, d = 1.15) => (e.width && e.width > 0 && e.width < 8 ? e.width : d);
   const dash = (e: FigElement) => (e.dashed ? '4 3' : undefined);
   const poly = (pts: P[], closed = false) => pts.map((p, i) => `${i ? 'L' : 'M'} ${fmt(p[0])} ${fmt(p[1])}`).join(' ') + (closed ? ' Z' : '');
 
@@ -417,7 +417,7 @@ export function layoutFigure(b: FigureBlock, theme: PdfTheme, maxW: number, maxH
         case 'galvanometer':
           twoTerminal(e, 20, (p0, p1, _d, _n, col) => {
             const m = lerp(p0, p1, 0.5);
-            shapes.push({ kind: 'circle', cx: m[0], cy: m[1], r: 10, fill: '#ffffff', stroke: col, sw: 1.3 });
+            shapes.push({ kind: 'circle', cx: m[0], cy: m[1], r: 10, fill: '#ffffff', stroke: col, sw: 1.15 });
             const letter = t === 'ammeter' ? 'A' : t === 'voltmeter' ? 'V' : t === 'galvanometer' ? 'G' : (e.kind ?? e.text ?? 'A').slice(0, 2);
             labels.push({ x: m[0] - 10, y: m[1] - 7, w: 20, h: 14, text: letter, size: 9.5, color: col, align: 'center', valign: 'middle', weight: 700 });
           });
@@ -594,6 +594,154 @@ export function layoutFigure(b: FigureBlock, theme: PdfTheme, maxW: number, maxH
             }
           }
           if (e.label) text(e.label, S([at[0] + size[0], at[1] + size[1]]), { pos: 'left', size: 9, color: '#475569' });
+          break;
+        }
+        case 'magnet':
+        case 'barmagnet':
+        case 'pole': {
+          // bar magnet: kind 'NS' (N on the left before rotation) | 'SN' | 'N' | 'S' (single pole piece)
+          const size: P = (e.size as P) ?? [e.width ?? 40, e.height ?? 12];
+          const center: P = e.center ? (e.center as P) : e.at ? [e.at[0] + size[0] / 2, e.at[1] + size[1] / 2] : [W / 2, H / 2];
+          const kind = String(e.kind ?? (t === 'pole' ? 'N' : 'NS')).toUpperCase();
+          const ang = e.rotate ?? 0;
+          const toW = (lp: P): P => rot(add(center, lp), center, ang);
+          const hw = size[0] / 2;
+          const hh = size[1] / 2;
+          const NCOL = '#b8605a';
+          const SCOL = '#5f7d9c';
+          // field lines (two opposite poles, traced numerically) drawn underneath the body
+          const nLines = Math.max(0, Math.min(8, Math.round(e.lines ?? 0)));
+          if (nLines && (kind === 'NS' || kind === 'SN')) {
+            const a = hw - Math.min(hh * 0.5, hw * 0.3);
+            const sgn = kind === 'NS' ? 1 : -1; // N at -a*sgn
+            const N: P = [-a * sgn, 0];
+            const Sp: P = [a * sgn, 0];
+            const lc = color(e, '#8a94a3');
+            const inside = (q: P) => Math.abs(q[0]) < hw && Math.abs(q[1]) < hh;
+            const inBox = (q: P) => {
+              const w = toW(q);
+              return w[0] >= -2 && w[0] <= W + 2 && w[1] >= -2 && w[1] <= H + 2;
+            };
+            for (let side = -1; side <= 1; side += 2)
+              for (let i = 0; i < nLines; i++) {
+                const phi = ((38 + (i * 84) / Math.max(1, nLines - 1)) * Math.PI) / 180;
+                let q: P = [N[0] - sgn * Math.cos(phi) * hh * 0.6, side * Math.sin(phi) * hh * 0.6];
+                const pts: P[] = [];
+                const step = Math.max(size[0], size[1]) / 60;
+                for (let it = 0; it < 900; it++) {
+                  const r1 = sub(q, N);
+                  const r2 = sub(q, Sp);
+                  const d1 = Math.pow(len(r1), 3) || 1e-6;
+                  const d2 = Math.pow(len(r2), 3) || 1e-6;
+                  const f: P = [r1[0] / d1 - r2[0] / d2, r1[1] / d1 - r2[1] / d2];
+                  const u = unit(f);
+                  q = add(q, mul(u, step));
+                  if (len(sub(q, Sp)) < hh * 0.55 || !inBox(q)) break;
+                  if (!inside(q)) pts.push(q);
+                  else if (pts.length > 4) break;
+                }
+                if (pts.length < 4) continue;
+                const scr = pts.map((pp) => S(toW(pp)));
+                shapes.push({ kind: 'path', d: poly(scr), stroke: lc, sw: 0.8, cap: 'round' });
+                const mi = Math.floor(scr.length / 2);
+                arrowHead(scr[mi + 1] ?? scr[mi], scr[mi - 1], lc, 0.7);
+              }
+          }
+          const half = (x0: number, x1: number): P[] => [toW([x0, -hh]), toW([x1, -hh]), toW([x1, hh]), toW([x0, hh])];
+          const outline = color(e, '#3a3631');
+          const letter = Math.min(e.fontSize ?? 11, Math.max(6, size[1] * k * 0.62));
+          if (kind === 'N' || kind === 'S') {
+            shapes.push({ kind: 'polygon', points: half(-hw, hw).map(S), fill: kind === 'N' ? NCOL : SCOL, stroke: outline, sw: 0.9 });
+            text(kind, S(center), { size: letter, color: '#ffffff', weight: 700 });
+          } else {
+            const leftN = kind === 'NS';
+            shapes.push({ kind: 'polygon', points: half(-hw, 0).map(S), fill: leftN ? NCOL : SCOL, stroke: outline, sw: 0.9 });
+            shapes.push({ kind: 'polygon', points: half(0, hw).map(S), fill: leftN ? SCOL : NCOL, stroke: outline, sw: 0.9 });
+            text(leftN ? 'N' : 'S', S(toW([-hw / 2, 0])), { size: letter, color: '#ffffff', weight: 700 });
+            text(leftN ? 'S' : 'N', S(toW([hw / 2, 0])), { size: letter, color: '#ffffff', weight: 700 });
+          }
+          if (e.label) {
+            const top = S(toW([0, e.labelPos === 'below' ? -hh : hh]));
+            text(e.label, top, { pos: e.labelPos === 'below' ? 'below' : 'above', size: e.fontSize ?? 9, color: '#3a3631' });
+          }
+          break;
+        }
+        case 'into':
+        case 'outof':
+        case 'in':
+        case 'out': {
+          // single ⊗ / ⊙ symbol (current or field perpendicular to the page)
+          const c = (e.at ?? e.center) as P | undefined;
+          if (!c) break;
+          const p = S(c);
+          const r = e.r ? e.r * k : 3.6;
+          const col = color(e, '#3a3631');
+          shapes.push({ kind: 'circle', cx: p[0], cy: p[1], r, fill: '#ffffff', stroke: col, sw: 0.9 });
+          if (t === 'outof' || t === 'out') shapes.push({ kind: 'circle', cx: p[0], cy: p[1], r: r * 0.28, fill: col });
+          else {
+            const q = r * 0.62;
+            shapes.push({ kind: 'line', x1: p[0] - q, y1: p[1] - q, x2: p[0] + q, y2: p[1] + q, stroke: col, sw: 0.9 });
+            shapes.push({ kind: 'line', x1: p[0] - q, y1: p[1] + q, x2: p[0] + q, y2: p[1] - q, stroke: col, sw: 0.9 });
+          }
+          if (e.label) text(e.label, [p[0] + r, p[1]], { pos: e.labelPos === 'left' ? 'left' : 'right', size: e.fontSize ?? 8.5, color: col });
+          break;
+        }
+        case 'solenoid':
+        case 'helix': {
+          // a coil drawn in light perspective between from → to (the axis); r = radius, coils = turns
+          if (!e.from || !e.to) break;
+          const A = S(e.from);
+          const B = S(e.to);
+          const d = unit(sub(B, A));
+          const n = perp(d);
+          const L = len(sub(B, A));
+          const turns = Math.max(2, Math.min(40, Math.round(e.coils ?? 8)));
+          const R = (e.r ?? 8) * k;
+          const pitch = L / turns;
+          const ecc = Math.min(R * 0.32, pitch * 0.9);
+          const col = color(e, '#8a5a3c');
+          const w = sw(e, 1.15);
+          if (e.kind === 'core' || e.fill) {
+            const c0 = add(A, mul(n, -R * 0.62));
+            const c1 = add(B, mul(n, -R * 0.62));
+            const c2 = add(B, mul(n, R * 0.62));
+            const c3 = add(A, mul(n, R * 0.62));
+            shapes.push({ kind: 'polygon', points: [c0, c1, c2, c3], fill: fillOf(e, '#d9d4cb'), stroke: '#9a948b', sw: 0.6 });
+          }
+          const at = (th: number): P => add(add(A, mul(d, (pitch * th) / (2 * Math.PI) + ecc * Math.sin(th))), mul(n, R * Math.cos(th)));
+          const N2 = turns * 36;
+          let seg: P[] = [];
+          let front = true;
+          const flush = () => {
+            if (seg.length > 1) shapes.push({ kind: 'path', d: poly(seg), stroke: col, sw: front ? w : w * 0.7, opacity: front ? 1 : 0.45, cap: 'round' });
+          };
+          for (let i = 0; i <= N2; i++) {
+            const th = (i / N2) * turns * 2 * Math.PI;
+            const f = Math.sin(th) >= 0;
+            const p = at(th);
+            if (i && f !== front) {
+              seg.push(p);
+              flush();
+              seg = [p];
+              front = f;
+            } else seg.push(p);
+          }
+          flush();
+          // leads
+          const s0 = at(0);
+          const s1 = at(turns * 2 * Math.PI);
+          const lead = e.kind === 'noleads' ? 0 : R; // leads end 2r from the axis, under from / to
+          if (lead) {
+            const l0 = add(s0, mul(n, lead));
+            const l1 = add(s1, mul(n, lead));
+            shapes.push({ kind: 'line', x1: s0[0], y1: s0[1], x2: l0[0], y2: l0[1], stroke: col, sw: w });
+            shapes.push({ kind: 'line', x1: s1[0], y1: s1[1], x2: l1[0], y2: l1[1], stroke: col, sw: w });
+          }
+          if (e.label) {
+            const m = lerp(A, B, 0.5);
+            const below = e.labelPos === 'below';
+            text(e.label, add(m, mul(n, (below ? 1 : -1) * (R + 4))), { pos: below ? 'below' : 'above', size: e.fontSize ?? 9, color: '#3a3631' });
+          }
           break;
         }
         default:

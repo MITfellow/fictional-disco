@@ -126,7 +126,9 @@ export function runLocal(promptRaw: string, current: DocSpec, attachments: Asset
     applyStyleEdits(p, prompt, doc, changes);
     changes.push(`New ${sci} notes`);
     return {
-      reply: `Here are typeset **${doc.meta.title}** notes: MathJax-quality numbered equations, a vector diagram, a function plot, highlighted boxes for laws and key formulas, and a step-by-step worked example.\n\nTry *switch to modern style*, *add equation: F = G m_1 m_2 / r^2*, or *add plot of sin(x)/x*. For any other topic, connect a free **Gemini** or **Groq** key in Settings and the AI will write and draw it from scratch.`,
+      reply: sci === 'induction'
+        ? `Here is a five-page chapter on **Electromagnetic Induction**: Faraday’s experiment with a bar magnet and coil, magnetic flux, Faraday’s and Lenz’s laws, motional emf, self- and mutual inductance, the RL circuit and the AC generator. It has 8 diagrams, 3 plots, 8 numbered equations, worked examples and a summary table.\n\nTry *cream paper*, *airy spacing* or *switch to modern style*.`
+        : `Here are typeset **${doc.meta.title}** notes: MathJax-quality numbered equations, a vector diagram, a function plot, highlighted boxes for laws and key formulas, and a step-by-step worked example.\n\nTry *switch to modern style*, *add equation: F = G m_1 m_2 / r^2*, or *add plot of sin(x)/x*. For any other topic, connect a free **Gemini** or **Groq** key in Settings and the AI will write and draw it from scratch.`,
       doc,
       changes,
     };

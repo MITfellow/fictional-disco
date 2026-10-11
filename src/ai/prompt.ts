@@ -44,7 +44,8 @@ Science and maths:
 - equation {latex, numbered?:true, label?, caption?}: display maths rendered by MathJax (full LaTeX: \frac, \int, \sum, \vec, \hat, \nabla, \partial, aligned/cases/pmatrix, \boxed, \cancel, \text, \mathrm, \ce{} for chemistry). Auto-numbered (1), (2)…; set numbered:false for unimportant ones.
 - plot {functions:[{expr, label?, color?, dashed?, domain?:[a,b]}], parametric?:[{x, y, t:[a,b], label?}], data?:[{points:[[x,y],...], label?, line?}], points?:[{x,y,label?}], vlines?:[{x,label?}], hlines?:[{y,label?}], shade?:[{expr, from, to, label?}], xRange?:[a,b], yRange?:[a,b], xLabel?, yLabel?, title?, caption?}
    expr syntax: x, numbers, + - * / ^, parentheses, pi, e, sin cos tan asin acos atan sinh cosh tanh exp ln log sqrt abs floor sign min max step; implicit multiplication works (2x, 3sin(x)). Parametric uses t. Labels may contain $math$. Always set sensible xRange (and yRange near asymptotes).
-- figure {width, height, elements:[...], caption?, scale?:10-100}: a vector drawing in a y-UP coordinate box (origin bottom-left, width×height units, e.g. 120×60). Elements (points are [x,y]):
+- figure {width, height, elements:[...], caption?, scale?:10-100, side?:"left"|"right", beside?:1-3}: side places a small figure next to the following 1–3 text blocks (paragraph/list/box/equation) like a textbook margin figure — use it for compact diagrams to save space; scale is then the figure's share of the width (30–55).
+  It is a vector drawing in a y-UP coordinate box (origin bottom-left, width×height units, e.g. 120×60). Elements (points are [x,y]):
    line/rod/rope {from,to,dashed?,arrow?:"end"|"start"|"both",label?} · wire {points:[[x,y],...]} · polyline {points, closed?, smooth?, fill?}
    arrow {from,to,label?} (thin) · vector/force/velocity {from,to,label?,color?} (bold coloured, label at tip)
    rect {at:[x,y] bottom-left | center, size:[w,h], rotate?, fill?, label?} · block/mass {center,size,rotate?,label} (shaded body)
@@ -55,6 +56,7 @@ Science and maths:
    spring {from,to,coils?,label?} · ground/floor/wall/ceiling {from,to} (hatched surface) · pulley {center,r}
    axes {at, length:[lx,ly], text:"x,y"} · dimension {from,to,label} (measurement arrow) · wave {from,to,amplitude,wavelength,label?}
    field {at,size:[w,h],kind:"right"|"left"|"up"|"down"|"in"|"out",label?} (uniform field arrows / ⊙ ⊗)
+   magnet {center,size:[w,h],kind:"NS"|"SN"|"N"|"S",rotate?,lines?:0-8,label?} (bar magnet with red N / blue S halves; "N"/"S" = single pole piece; lines draws curved field lines N→S) · solenoid {from,to,r,coils?,kind?:"core"|"noleads",label?} (3-D looking coil along the axis from→to; leads drop to 2r below the axis at from/to) · into/outof {at,label?} (single ⊗ / ⊙ symbol for a current or field)
    lens {at,height,kind:"convex"|"concave",label?} · mirror {from,to}
    circuits (two-terminal parts drawn between from→to with leads): resistor, capacitor, battery, inductor, bulb, switch {kind:"open"|"closed"}, source (AC), diode, ammeter, voltmeter, galvanometer. Join parts with wire elements that share exact endpoints.
    colors: "#hex" or red/blue/green/orange/purple/gray/black/primary/accent. Labels and text may contain $math$.

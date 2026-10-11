@@ -201,7 +201,7 @@ export interface PlotBlock extends BaseBlock {
 
 export type Pt = [number, number];
 export interface FigElement {
-  type: string; // line | arrow | vector | rect | circle | ellipse | polygon | polyline | curve | arc | angle | text | label | dot | spring | ground | wire | resistor | capacitor | battery | inductor | bulb | switch | source | meter | lens | mirror | wave | axes | dimension | pulley | block
+  type: string; // line | arrow | vector | rect | circle | ellipse | polygon | polyline | curve | arc | angle | text | label | dot | spring | ground | wire | resistor | capacitor | battery | inductor | bulb | switch | source | meter | lens | mirror | wave | axes | dimension | pulley | block | magnet | solenoid
   from?: Pt;
   to?: Pt;
   at?: Pt;
@@ -227,6 +227,8 @@ export interface FigElement {
   amplitude?: number;
   wavelength?: number;
   coils?: number;
+  /** magnet: number of field lines drawn on each side */
+  lines?: number;
   height?: number;
   length?: Pt;
   smooth?: boolean;
@@ -239,6 +241,10 @@ export interface FigureBlock extends BaseBlock {
   elements: FigElement[];
   caption?: string;
   scale?: number; // 10-100 percent of content width
+  /** place the figure beside the following text (paragraph / list / box / equation) */
+  side?: 'left' | 'right';
+  /** how many following blocks sit beside a side figure (default 1, max 3) */
+  beside?: number;
 }
 
 export type BoxVariant = 'definition' | 'theorem' | 'law' | 'principle' | 'example' | 'problem' | 'solution' | 'proof' | 'note' | 'tip' | 'warning' | 'summary' | 'key' | 'formula' | 'abstract';

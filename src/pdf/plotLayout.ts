@@ -124,16 +124,38 @@ export function layoutPlot(b: PlotBlock, theme: PdfTheme, width: number): Scene 
   // ---- frame
   const legendItems = [...curves.filter((c) => c.label), ...(b.data ?? []).map((d, i) => ({ label: d.label, color: colorAt(fns.length + par.length + i, d.color), dashed: false, pts: [] }))].filter((c) => c.label);
   const H = Math.round(b.height ?? Math.min(260, Math.max(170, width * 0.56)));
-  const yStep = niceStep(y1 - y0, H > 200 ? 6 : 5);
+  // fewer ticks on short plots so the labels breathe
+  const yStep = niceStep(y1 - y0, Math.max(3, Math.min(6, Math.floor((H - 60) / 24))));
   const xStep = niceStep(x1 - x0, Math.max(4, Math.min(10, Math.floor(width / 60))));
   const yTicks: number[] = [];
   for (let v = Math.ceil(y0 / yStep - 1e-9) * yStep; v <= y1 + yStep * 1e-6; v += yStep) yTicks.push(v);
   const xTicks: number[] = [];
   for (let v = Math.ceil(x0 / xStep - 1e-9) * xStep; v <= x1 + xStep * 1e-6; v += xStep) xTicks.push(v);
   const tickW = Math.max(...yTicks.map((v) => richWidth(fmtTick(v, yStep), 7.5)), 10);
-  const top = (b.title ? 22 : 8) + (b.yLabel ? 14 : 4);
   const left = tickW + 8 + (b.yLabel ? 16 : 0);
   const right = 14;
+  // legend sits in a quiet row above the frame (right-aligned), never over the curves
+  const legW = legendItems.map((l) => 18 + richWidth(l.label!, 8) + 12);
+  const legRows: number[][] = [];
+  {
+    const firstAvail = width - right - (b.yLabel ? richWidth(b.yLabel, 8.5, true) + 24 : left);
+    let row: number[] = [];
+    let used = 0;
+    let avail = firstAvail;
+    legW.forEach((w, i) => {
+      if (row.length && used + w > avail) {
+        legRows.push(row);
+        row = [];
+        used = 0;
+        avail = width - right - left;
+      }
+      row.push(i);
+      used += w;
+    });
+    if (row.length) legRows.push(row);
+  }
+  const extraRows = legRows.length ? Math.max(0, legRows.length - (b.yLabel ? 1 : 0)) : 0;
+  const top = (b.title ? 22 : 8) + (b.yLabel || legRows.length ? 14 : 4) + extraRows * 13;
   const bottom = 20 + (b.xLabel ? 16 : 0);
   const pw = width - left - right;
   const ph = H - top - bottom;
@@ -160,7 +182,7 @@ export function layoutPlot(b: PlotBlock, theme: PdfTheme, width: number): Scene 
   if (b.xLabel) labels.push({ x: left, y: H - 15, w: pw, h: 14, text: b.xLabel, size: 8.5, color: '#1e293b', align: 'center', weight: 600, rich: true });
   if (b.yLabel) {
     // vertical text is not supported for labels, so place the y label above the axis, left-aligned
-    labels.push({ x: 0, y: top - 17, w: Math.max(80, richWidth(b.yLabel, 8.5, true) + 4), h: 12, text: b.yLabel, size: 8.5, color: '#1e293b', weight: 600, rich: true });
+    labels.push({ x: 0, y: (b.title ? 22 : 8) - 3, w: Math.max(80, richWidth(b.yLabel, 8.5, true) + 4), h: 12, text: b.yLabel, size: 8.5, color: '#1e293b', weight: 600, rich: true });
   }
 
   // ---- clip helper: split a polyline into in-range screen segments
@@ -262,18 +284,17 @@ export function layoutPlot(b: PlotBlock, theme: PdfTheme, width: number): Scene 
     }
   }
 
-  // ---- legend (top-right inside the frame)
-  if (legendItems.length) {
-    const lw = Math.max(...legendItems.map((l) => richWidth(l.label!, 8))) + 30;
-    const lh = legendItems.length * 13 + 6;
-    const lx = left + pw - lw - 6;
-    const ly = top + 6;
-    shapes.push({ kind: 'rect', x: lx, y: ly, w: lw, h: lh, rx: 3, fill: '#ffffff', stroke: '#e2e8f0', sw: 0.7, opacity: 0.92 });
-    legendItems.forEach((l, i) => {
-      const yy = ly + 9.5 + i * 13;
-      shapes.push({ kind: 'line', x1: lx + 6, y1: yy, x2: lx + 20, y2: yy, stroke: l.color, sw: 2, dash: l.dashed ? '4 2' : undefined });
-      labels.push({ x: lx + 24, y: yy - 6, w: lw - 26, h: 12, text: l.label!, size: 8, color: '#1e293b', valign: 'middle', rich: true });
-    });
-  }
+  // ---- legend rows above the frame
+  legRows.forEach((row, ri) => {
+    const rowW = row.reduce((acc, i) => acc + legW[i], 0) - 12;
+    let x = left + pw - rowW;
+    const yy = (b.title ? 22 : 8) + 3 + ri * 13;
+    for (const i of row) {
+      const l = legendItems[i];
+      shapes.push({ kind: 'line', x1: x, y1: yy, x2: x + 14, y2: yy, stroke: l.color, sw: 1.8, dash: l.dashed ? '4 2' : undefined });
+      labels.push({ x: x + 18, y: yy - 6, w: legW[i] - 18, h: 12, text: l.label!, size: 8, color: '#1e293b', valign: 'middle', rich: true });
+      x += legW[i];
+    }
+  });
   return { width, height: H, shapes, labels };
 }
