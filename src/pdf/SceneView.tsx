@@ -3,14 +3,14 @@ import type { ReactNode } from 'react';
 import type { Scene } from './scene';
 
 export function SceneView({ scene, font, rich }: { scene: Scene; font: string | string[]; rich?: (text: string, size: number) => ReactNode }) {
-  const rawW = scene.width;
-  const rawH = scene.height;
-  const safe = (n: number, fallback = 0) => Number.isFinite(n) ? Math.max(-1e6, Math.min(1e6, n)) : fallback;
-  const width = Math.max(1, safe(rawW, 1));
-  const height = Math.max(1, safe(rawH, 1));
+  const finite = (n: number, fallback = 0) => (Number.isFinite(n) ? n : fallback);
+  const width = Math.max(1, Math.min(5000, finite(scene.width, 1)));
+  const height = Math.max(1, Math.min(5000, finite(scene.height, 1)));
   // Provider-authored curves and field-line integration can occasionally
-  // diverge. Clamp SVG path numbers so one bad primitive never prevents the
-  // whole PDF from compiling.
+  // diverge. Keep every coordinate near the scene instead of merely making it
+  // finite: PDFKit rejects syntactically valid but astronomically large values.
+  const limit = Math.max(1000, width * 8, height * 8);
+  const safe = (n: number, fallback = 0) => Number.isFinite(n) ? Math.max(-limit, Math.min(limit, n)) : fallback;
   const path = (d: string) => d.replace(/[-+]?(?:\d*\.\d+|\d+\.?)(?:e[-+]?\d+)?/gi, (token) => String(safe(Number(token))));
   return (
     <View style={{ width, height, position: 'relative' }}>
