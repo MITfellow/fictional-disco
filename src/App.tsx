@@ -165,10 +165,12 @@ export default function App() {
     if (!lastBlob.current) return;
     const filename = `${slug(doc.meta.title)}.pdf`;
     const blob = lastBlob.current;
-    // Embedded previews commonly block blob: downloads. Upload the already
-    // compiled bytes to a short-lived same-origin endpoint and navigate to a
-    // real HTTP attachment response. Production hosts can provide the same
-    // endpoint; if unavailable we continue to native browser fallbacks.
+    // Reserve a tab synchronously while the click still has user activation.
+    // Arena's embedded preview blocks downloads inside its iframe, but allows
+    // an explicitly user-opened tab to receive a normal HTTP attachment.
+    let downloadTab: Window | null = null;
+    if (window.self !== window.top) downloadTab = window.open('about:blank', '_blank');
+    // Upload the already compiled bytes to a short-lived same-origin endpoint.
     try {
       const response = await fetch('/__pdf_download', {
         method: 'POST',
@@ -177,12 +179,18 @@ export default function App() {
       });
       if (response.ok) {
         const result = await response.json() as { url: string };
-        window.location.assign(result.url);
+        if (downloadTab) {
+          downloadTab.location.href = result.url;
+          setTimeout(() => { try { downloadTab?.close(); } catch { /* cross-origin tab */ } }, 5000);
+        } else {
+          window.location.assign(result.url);
+        }
         return;
       }
     } catch {
       /* static host: use browser APIs below */
     }
+    downloadTab?.close();
     const picker = (window as unknown as { showSaveFilePicker?: (options: unknown) => Promise<{ createWritable: () => Promise<{ write: (data: Blob) => Promise<void>; close: () => Promise<void> }> }> }).showSaveFilePicker;
     if (picker) {
       try {
