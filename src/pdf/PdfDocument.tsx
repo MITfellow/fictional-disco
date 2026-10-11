@@ -570,6 +570,23 @@ function BoxView({ b, ctx }: { b: BoxBlock; ctx: Ctx }) {
       </View>
     );
   const formula = b.variant === 'formula' || b.variant === 'summary';
+  // Natural modern documents use an editorial margin rule instead of a nested
+  // card with a coloured title bar. It keeps every box type available while
+  // making mixed study pages feel like one coherent printed document.
+  if (!ctx.vivid)
+    return (
+      <View wrap={keep ? false : undefined} style={{ marginVertical: 9 * ctx.ty.k, paddingVertical: 6, paddingLeft: 12, paddingRight: 5, borderLeftWidth: formula ? 2.2 : 1.4, borderLeftColor: tint(color, formula ? 0.2 : 0.45), backgroundColor: formula ? tint(color, 0.96) : 'transparent' }}>
+        <Text style={{ fontSize: 8.2, fontWeight: 700, letterSpacing: 0.75, color: shade(color, 0.1), marginBottom: 4 }}>
+          {label.toUpperCase()}
+          {b.title ? (
+            <Text style={{ fontSize: 10.2, letterSpacing: 0, color: theme.text }}>
+              {'  ·  '}<Inline text={b.title} ctx={ctx} size={10.2} />
+            </Text>
+          ) : null}
+        </Text>
+        {body}
+      </View>
+    );
   return (
     <View wrap={keep ? false : undefined} style={{ marginVertical: 10 * ctx.ty.k, borderRadius: 8, borderWidth: ctx.vivid ? 1 : 0.8, borderColor: tint(color, 0.7), backgroundColor: formula ? tint(color, 0.955) : ctx.vivid ? '#ffffff' : 'transparent', overflow: 'hidden' }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 11, paddingVertical: 6, backgroundColor: tint(color, 0.9), borderBottomWidth: 0.8, borderBottomColor: tint(color, 0.75) }}>
@@ -595,10 +612,10 @@ function StepsView({ b, ctx }: { b: StepsBlock; ctx: Ctx }) {
       {items.map((it, i) => (
         <View key={i} wrap={false} style={{ flexDirection: 'row' }}>
           <View style={{ width: 24, alignItems: 'center' }}>
-            <View style={{ width: 17, height: 17, borderRadius: 9, backgroundColor: ctx.academic ? tint(theme.primary, 0.88) : theme.primary, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontFamily: FAMILY.sans, fontSize: 8, lineHeight: 1, fontWeight: 700, color: ctx.academic ? theme.primaryDark : '#ffffff' }}>{i + 1}</Text>
+            <View style={{ width: 17, height: 17, borderRadius: 9, backgroundColor: ctx.academic || !ctx.vivid ? tint(theme.primary, 0.9) : theme.primary, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontFamily: FAMILY.sans, fontSize: 8, lineHeight: 1, fontWeight: 700, color: ctx.academic || !ctx.vivid ? theme.primaryDark : '#ffffff' }}>{i + 1}</Text>
             </View>
-            {i < items.length - 1 ? <View style={{ width: 1.2, flexGrow: 1, backgroundColor: ctx.academic ? '#cbd5e1' : tint(theme.primary, 0.6), marginVertical: 2 }} /> : null}
+            {i < items.length - 1 ? <View style={{ width: 1.2, flexGrow: 1, backgroundColor: ctx.academic || !ctx.vivid ? theme.border : tint(theme.primary, 0.6), marginVertical: 2 }} /> : null}
           </View>
           <View style={{ flex: 1, paddingLeft: 8, paddingBottom: 10, paddingTop: 1.5 }}>
             {it.text ? (
