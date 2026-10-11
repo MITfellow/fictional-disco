@@ -8,15 +8,36 @@ export interface ProviderInfo {
   baseUrl: string;
   keyHint: string;
   keyUrl?: string;
+  free?: boolean;
 }
 
 export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
   local: { id: 'local', label: 'Built-in engine (offline)', defaultModel: 'fluent-local', models: ['fluent-local'], baseUrl: '', keyHint: 'No key needed' },
+  gemini: {
+    id: 'gemini',
+    label: 'Google Gemini — free tier',
+    defaultModel: 'gemini-2.5-flash',
+    models: ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.5-flash-lite', 'gemini-2.0-flash'],
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+    keyHint: 'AIza…',
+    keyUrl: 'https://aistudio.google.com/app/apikey',
+    free: true,
+  },
+  groq: {
+    id: 'groq',
+    label: 'Groq — free tier',
+    defaultModel: 'llama-3.3-70b-versatile',
+    models: ['llama-3.3-70b-versatile', 'openai/gpt-oss-120b', 'moonshotai/kimi-k2-instruct', 'qwen/qwen3-32b', 'meta-llama/llama-4-maverick-17b-128e-instruct'],
+    baseUrl: 'https://api.groq.com/openai/v1',
+    keyHint: 'gsk_…',
+    keyUrl: 'https://console.groq.com/keys',
+    free: true,
+  },
   openai: {
     id: 'openai',
     label: 'OpenAI',
     defaultModel: 'gpt-4.1-mini',
-    models: ['gpt-4.1-mini', 'gpt-4.1', 'gpt-4o', 'gpt-4o-mini', 'gpt-5', 'gpt-5-mini', 'o4-mini'],
+    models: ['gpt-4.1-mini', 'gpt-4.1', 'gpt-4o', 'gpt-5', 'gpt-5-mini', 'o4-mini'],
     baseUrl: 'https://api.openai.com/v1',
     keyHint: 'sk-…',
     keyUrl: 'https://platform.openai.com/api-keys',
@@ -25,25 +46,16 @@ export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
     id: 'anthropic',
     label: 'Anthropic Claude',
     defaultModel: 'claude-sonnet-4-5',
-    models: ['claude-sonnet-4-5', 'claude-opus-4-1', 'claude-haiku-4-5', 'claude-3-7-sonnet-latest'],
+    models: ['claude-sonnet-4-5', 'claude-opus-4-1', 'claude-haiku-4-5'],
     baseUrl: 'https://api.anthropic.com/v1',
     keyHint: 'sk-ant-…',
     keyUrl: 'https://console.anthropic.com/settings/keys',
-  },
-  gemini: {
-    id: 'gemini',
-    label: 'Google Gemini',
-    defaultModel: 'gemini-2.5-flash',
-    models: ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash'],
-    baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
-    keyHint: 'AIza…',
-    keyUrl: 'https://aistudio.google.com/app/apikey',
   },
   openrouter: {
     id: 'openrouter',
     label: 'OpenRouter',
     defaultModel: 'openai/gpt-4.1-mini',
-    models: ['openai/gpt-4.1-mini', 'anthropic/claude-sonnet-4.5', 'google/gemini-2.5-flash', 'meta-llama/llama-3.3-70b-instruct', 'qwen/qwen-2.5-72b-instruct', 'x-ai/grok-4'],
+    models: ['openai/gpt-4.1-mini', 'anthropic/claude-sonnet-4.5', 'google/gemini-2.5-flash', 'deepseek/deepseek-chat-v3.1:free', 'meta-llama/llama-3.3-70b-instruct:free', 'qwen/qwen-2.5-72b-instruct'],
     baseUrl: 'https://openrouter.ai/api/v1',
     keyHint: 'sk-or-…',
     keyUrl: 'https://openrouter.ai/keys',
@@ -122,7 +134,7 @@ export async function streamCompletion(settings: AiSettings, system: string, tur
         'anthropic-version': '2023-06-01',
         'anthropic-dangerous-direct-browser-access': 'true',
       },
-      body: JSON.stringify({ model, system, max_tokens: 16000, temperature: settings.temperature, stream: true, messages: turns }),
+      body: JSON.stringify({ model, system, max_tokens: 32000, temperature: settings.temperature, stream: true, messages: turns }),
     });
     if (!res.ok) throw new Error(await errorText(res));
     for await (const data of sse(res, signal)) {
@@ -176,7 +188,7 @@ export async function streamCompletion(settings: AiSettings, system: string, tur
     messages: [{ role: 'system', content: system }, ...turns],
   };
   if (!isReasoning) body.temperature = settings.temperature;
-  if (settings.provider === 'openai') body.response_format = { type: 'json_object' };
+  if (settings.provider === 'openai' || settings.provider === 'groq') body.response_format = { type: 'json_object' };
   const res = await fetch(`${base}/chat/completions`, { method: 'POST', signal, headers, body: JSON.stringify(body) });
   if (!res.ok) throw new Error(await errorText(res));
   for await (const data of sse(res, signal)) {

@@ -1,24 +1,48 @@
 import { registerFonts } from './fonts';
-import i400 from '@fontsource/inter/files/inter-latin-400-normal.woff?url';
-import i400i from '@fontsource/inter/files/inter-latin-400-italic.woff?url';
-import i600 from '@fontsource/inter/files/inter-latin-600-normal.woff?url';
-import i700 from '@fontsource/inter/files/inter-latin-700-normal.woff?url';
-import i700i from '@fontsource/inter/files/inter-latin-700-italic.woff?url';
-import i800 from '@fontsource/inter/files/inter-latin-800-normal.woff?url';
-import m400 from '@fontsource/merriweather/files/merriweather-latin-400-normal.woff?url';
-import m400i from '@fontsource/merriweather/files/merriweather-latin-400-italic.woff?url';
-import m700 from '@fontsource/merriweather/files/merriweather-latin-700-normal.woff?url';
-import m700i from '@fontsource/merriweather/files/merriweather-latin-700-italic.woff?url';
-import m900 from '@fontsource/merriweather/files/merriweather-latin-900-normal.woff?url';
-import j400 from '@fontsource/jetbrains-mono/files/jetbrains-mono-latin-400-normal.woff?url';
-import j700 from '@fontsource/jetbrains-mono/files/jetbrains-mono-latin-700-normal.woff?url';
 
-const abs = (u: string) => new URL(u, self.location.href).href;
+// Explicit list so only the fonts we use are emitted as assets.
+const urls = import.meta.glob(
+  [
+    '/node_modules/@fontsource/inter/files/inter-latin-400-normal.woff',
+    '/node_modules/@fontsource/inter/files/inter-latin-400-italic.woff',
+    '/node_modules/@fontsource/inter/files/inter-latin-600-normal.woff',
+    '/node_modules/@fontsource/inter/files/inter-latin-700-normal.woff',
+    '/node_modules/@fontsource/inter/files/inter-latin-700-italic.woff',
+    '/node_modules/@fontsource/inter/files/inter-latin-800-normal.woff',
+    '/node_modules/@fontsource/inter/files/inter-greek-400-normal.woff',
+    '/node_modules/@fontsource/inter/files/inter-greek-400-italic.woff',
+    '/node_modules/@fontsource/inter/files/inter-greek-700-normal.woff',
+    '/node_modules/@fontsource/inter/files/inter-greek-700-italic.woff',
+    '/node_modules/@fontsource/inter/files/inter-latin-ext-400-normal.woff',
+    '/node_modules/@fontsource/inter/files/inter-latin-ext-700-normal.woff',
+    '/node_modules/@fontsource/source-serif-4/files/source-serif-4-latin-400-normal.woff',
+    '/node_modules/@fontsource/source-serif-4/files/source-serif-4-latin-400-italic.woff',
+    '/node_modules/@fontsource/source-serif-4/files/source-serif-4-latin-600-normal.woff',
+    '/node_modules/@fontsource/source-serif-4/files/source-serif-4-latin-700-normal.woff',
+    '/node_modules/@fontsource/source-serif-4/files/source-serif-4-latin-700-italic.woff',
+    '/node_modules/@fontsource/source-serif-4/files/source-serif-4-greek-400-normal.woff',
+    '/node_modules/@fontsource/source-serif-4/files/source-serif-4-greek-400-italic.woff',
+    '/node_modules/@fontsource/source-serif-4/files/source-serif-4-greek-700-normal.woff',
+    '/node_modules/@fontsource/source-serif-4/files/source-serif-4-greek-700-italic.woff',
+    '/node_modules/@fontsource/stix-two-text/files/stix-two-text-latin-400-normal.woff',
+    '/node_modules/@fontsource/stix-two-text/files/stix-two-text-latin-400-italic.woff',
+    '/node_modules/@fontsource/stix-two-text/files/stix-two-text-latin-700-normal.woff',
+    '/node_modules/@fontsource/stix-two-text/files/stix-two-text-latin-700-italic.woff',
+    '/node_modules/@fontsource/stix-two-text/files/stix-two-text-greek-400-normal.woff',
+    '/node_modules/@fontsource/stix-two-text/files/stix-two-text-greek-400-italic.woff',
+    '/node_modules/@fontsource/stix-two-text/files/stix-two-text-greek-700-normal.woff',
+    '/node_modules/@fontsource/stix-two-text/files/stix-two-text-greek-700-italic.woff',
+    '/node_modules/@fontsource/noto-sans-math/files/noto-sans-math-latin-400-normal.woff',
+    '/node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-400-normal.woff',
+    '/node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-700-normal.woff',
+  ],
+  { query: '?url', import: 'default', eager: true },
+) as Record<string, string>;
 
 export function registerBrowserFonts() {
-  registerFonts({
-    sans: { 400: abs(i400), '400i': abs(i400i), 600: abs(i600), 700: abs(i700), '700i': abs(i700i), 800: abs(i800) },
-    serif: { 400: abs(m400), '400i': abs(m400i), 700: abs(m700), '700i': abs(m700i), 900: abs(m900) },
-    mono: { 400: abs(j400), 700: abs(j700) },
+  registerFonts((file) => {
+    const u = urls[`/node_modules/@fontsource/${file}`];
+    if (!u) throw new Error(`Font not bundled: ${file}`);
+    return new URL(u, self.location.href).href;
   });
 }

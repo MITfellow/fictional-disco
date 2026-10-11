@@ -1,7 +1,8 @@
 import { Circle, Ellipse, Line, Path, Polygon, Rect, Svg, Text, View } from '@react-pdf/renderer';
+import type { ReactNode } from 'react';
 import type { Scene } from './scene';
 
-export function SceneView({ scene, font }: { scene: Scene; font: string }) {
+export function SceneView({ scene, font, rich }: { scene: Scene; font: string | string[]; rich?: (text: string, size: number) => ReactNode }) {
   const { width, height } = scene;
   return (
     <View style={{ width, height, position: 'relative' }}>
@@ -64,7 +65,7 @@ export function SceneView({ scene, font }: { scene: Scene; font: string }) {
               textAlign: l.align ?? 'left',
             }}
           >
-            {l.text}
+            {l.rich && rich ? rich(l.text, l.size) : l.text}
           </Text>
         </View>
       ))}

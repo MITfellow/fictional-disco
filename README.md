@@ -4,6 +4,8 @@ An AI chatbot that designs and compiles real, vector PDFs while you watch. You c
 
 ## Features
 
+- **Science-grade typesetting.** Display equations are typeset with a TeX engine (MathJax, converted to vector paths) and numbered automatically. Inline `$…$` maths works in any text. There are **function plots** (functions, parametric curves, data, shading and markers), **physics figures** built from primitives (vectors, springs, blocks, inclines, pulleys, charges, field lines, circuit parts, lenses and rays, angles, dimensions), **definition, law, example and solution boxes**, and **step-by-step derivations**. Documents use either an academic or a modern style.
+- **The AI is in control.** A connected LLM picks the whole design (style, theme, fonts, cover, kicker) and edits documents with precise operations (replace, insert, delete or move blocks; change meta) instead of rewriting everything. The app repairs common model mistakes such as single-backslash TeX, truncated JSON and invalid escapes before anything is compiled.
 - **Chat to create and edit.** Ask for a report, proposal, résumé, invoice, letter, meeting notes, study guide, project plan or anything else, then keep refining it in the same conversation.
 - **Real PDF compiler.** It is built on `@react-pdf/renderer` and outputs vector text, embedded fonts (Inter, Merriweather, JetBrains Mono), a cover page, a table of contents with real page numbers and clickable links, headers and footers, page numbers, numbered headings, and A4/Letter/Legal/A5 page sizes in portrait or landscape.
 - **Diagrams drawn with real lines.** A custom layout engine draws:
@@ -14,19 +16,18 @@ An AI chatbot that designs and compiles real, vector PDFs while you watch. You c
 - **Images:** attach, paste or drag images into the chat to place them in the document.
 - **7 document themes:** Ocean, Emerald, Sunset, Royal, Graphite, Rose and Midnight.
 - **Preview:** rendered with pdf.js into crisp canvases (no flicker), with zoom, fit-width and fit-page modes, page tracking and open-in-tab.
-- **Outline editor:** reorder, duplicate, delete and edit blocks, or add new ones by hand.
-- **Source view:** edit the JSON document spec directly.
-- Undo/redo history, a template gallery, dark mode, a resizable split view, and autosave to localStorage.
+- Minimal UI: chat, live PDF, undo/redo, new document, dark mode, a resizable split view, and autosave to localStorage.
 
 ## AI engines
 
 | Engine | Setup |
 | --- | --- |
-| **Built-in (offline)** | Default, no key needed. It understands document types and edit commands such as `add a pie chart`, `add flowchart: Idea -> Build -> Works? -> [Yes] Launch`, `switch to the royal theme`, `landscape`, `add a cover page`, `remove the last table` and `title: My Report`. |
-| OpenAI / Anthropic / Gemini / OpenRouter | Add your API key in **Settings**. Replies stream directly from your browser. |
+| **Gemini (free key, recommended)** / **Groq (free key)** | Paste a key in **Settings** (via the engine chip in the chat header). The AI can then write about any topic with its own equations, plots and diagrams. |
+| **Built-in (offline)** | Default, no key needed. It produces physics notes on projectiles, forces, oscillations, circuits and optics, plus business templates. It also understands document types and edit commands such as `add a pie chart`, `add flowchart: Idea -> Build -> Works? -> [Yes] Launch`, `switch to the royal theme`, `landscape`, `add a cover page`, `remove the last table` and `title: My Report`. |
+| OpenAI / Anthropic / OpenRouter | Add your API key in **Settings**. Replies stream directly from your browser. |
 | Custom | Any OpenAI-compatible endpoint (Ollama, LM Studio, vLLM…). |
 
-The LLM gets a strict schema in its system prompt and returns the complete document spec as JSON. The app checks and repairs that JSON before compiling, so small model mistakes don't break the PDF.
+The LLM gets a strict schema in its system prompt. It returns a complete document spec for new documents and a list of edit operations for changes. The app checks and repairs that JSON before compiling, so small model mistakes don't break the PDF.
 
 API keys are stored only in your browser's localStorage. Requests go straight from the browser to the provider.
 
@@ -36,7 +37,7 @@ API keys are stored only in your browser's localStorage. Requests go straight fr
 npm install
 npm run dev        # http://localhost:5173 (compiles on the main thread)
 npm run start      # production build + preview on :4173 (PDF compiles in a Web Worker)
-npm run samples    # render every template to ./samples/*.pdf with Node
+npm run samples    # render every template and science sample to ./samples/*.pdf with Node
 npm run typecheck
 ```
 
@@ -52,14 +53,17 @@ src/
     engine.ts           orchestration and document diffing
     local.ts            offline intent engine
     templates.ts        rich document builders
+    science.ts          offline physics notes (projectile, forces, SHM, circuits, optics)
   pdf/
     PdfDocument.tsx     react-pdf document (cover, TOC, blocks, page chrome)
     diagramLayout.ts    flowchart / mind map / sequence / cycle layout engines
     chartLayout.ts      chart layout
+    mathjax.ts, MathSvg.tsx, texInline.ts  TeX → vector equations / inline maths runs
+    plotLayout.ts, figureLayout.ts  function plots and physics figures
     scene.ts, SceneView.tsx  vector scene → PDF SVG plus text labels
     compile.tsx         two-pass compile (TOC page numbers)
     pdf.worker.ts, client.ts  off-main-thread compilation
   preview/PdfPreview.tsx  pdf.js renderer
   chat/                 chat panel and markdown
-  components/           outline, JSON editor, settings, page setup, theme and template menus
+  components/           settings dialog
 ```

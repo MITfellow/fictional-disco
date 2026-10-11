@@ -13,6 +13,8 @@ export type ThemeName =
   | 'midnight';
 
 export type FontName = 'sans' | 'serif' | 'mono';
+export type DocStyle = 'modern' | 'academic';
+export type CoverStyle = 'gradient' | 'orbits' | 'waves' | 'grid' | 'minimal';
 export type PageSize = 'A4' | 'LETTER' | 'LEGAL' | 'A5';
 export type Orientation = 'portrait' | 'landscape';
 export type Tone = 'info' | 'success' | 'warning' | 'danger' | 'note';
@@ -33,6 +35,9 @@ export interface DocMeta {
   footer?: string;
   pageNumbers: boolean;
   numberedHeadings?: boolean;
+  style?: DocStyle;
+  coverStyle?: CoverStyle;
+  kicker?: string; // small label above the title, e.g. "PHYSICS · LECTURE NOTES"
 }
 
 export interface BaseBlock {
@@ -149,6 +154,95 @@ export interface SignatureBlock extends BaseBlock {
   type: 'signature';
   parties: { name: string; role?: string }[];
 }
+export interface EquationBlock extends BaseBlock {
+  type: 'equation';
+  latex: string;
+  numbered?: boolean;
+  label?: string; // custom tag instead of automatic number
+  caption?: string;
+}
+
+export interface PlotFunction {
+  expr: string; // e.g. "sin(x)", "0.5*9.8*x^2"
+  label?: string;
+  color?: string;
+  dashed?: boolean;
+  domain?: [number, number];
+}
+export interface PlotBlock extends BaseBlock {
+  type: 'plot';
+  title?: string;
+  functions?: PlotFunction[];
+  parametric?: { x: string; y: string; t?: [number, number]; label?: string; color?: string; dashed?: boolean }[];
+  data?: { points: [number, number][]; label?: string; color?: string; line?: boolean }[];
+  points?: { x: number; y: number; label?: string }[];
+  vlines?: { x: number; label?: string }[];
+  hlines?: { y: number; label?: string }[];
+  shade?: { expr: string; from: number; to: number; label?: string; color?: string }[];
+  xRange?: [number, number];
+  yRange?: [number, number];
+  xLabel?: string;
+  yLabel?: string;
+  height?: number;
+  caption?: string;
+}
+
+export type Pt = [number, number];
+export interface FigElement {
+  type: string; // line | arrow | vector | rect | circle | ellipse | polygon | polyline | curve | arc | angle | text | label | dot | spring | ground | wire | resistor | capacitor | battery | inductor | bulb | switch | source | meter | lens | mirror | wave | axes | dimension | pulley | block
+  from?: Pt;
+  to?: Pt;
+  at?: Pt;
+  center?: Pt;
+  points?: Pt[];
+  size?: Pt;
+  r?: number;
+  rx?: number;
+  ry?: number;
+  startAngle?: number;
+  endAngle?: number;
+  rotate?: number;
+  text?: string;
+  label?: string;
+  labelPos?: 'above' | 'below' | 'left' | 'right' | 'center' | 'start' | 'end';
+  color?: string;
+  fill?: string;
+  dashed?: boolean;
+  width?: number;
+  arrow?: 'end' | 'start' | 'both' | 'none';
+  fontSize?: number;
+  kind?: string;
+  amplitude?: number;
+  wavelength?: number;
+  coils?: number;
+  height?: number;
+  length?: Pt;
+  smooth?: boolean;
+  closed?: boolean;
+}
+export interface FigureBlock extends BaseBlock {
+  type: 'figure';
+  width: number; // coordinate system width (y axis points up)
+  height: number;
+  elements: FigElement[];
+  caption?: string;
+  scale?: number; // 10-100 percent of content width
+}
+
+export type BoxVariant = 'definition' | 'theorem' | 'law' | 'principle' | 'example' | 'problem' | 'solution' | 'proof' | 'note' | 'tip' | 'warning' | 'summary' | 'key' | 'formula' | 'abstract';
+export interface BoxBlock extends BaseBlock {
+  type: 'box';
+  variant: BoxVariant;
+  title?: string;
+  text?: string;
+  blocks?: Block[];
+}
+export interface StepsBlock extends BaseBlock {
+  type: 'steps';
+  title?: string;
+  items: { text?: string; math?: string }[];
+}
+
 export interface DividerBlock extends BaseBlock {
   type: 'divider';
 }
@@ -178,7 +272,12 @@ export type Block =
   | SignatureBlock
   | DividerBlock
   | PageBreakBlock
-  | SpacerBlock;
+  | SpacerBlock
+  | EquationBlock
+  | PlotBlock
+  | FigureBlock
+  | BoxBlock
+  | StepsBlock;
 
 export type BlockType = Block['type'];
 
@@ -206,7 +305,7 @@ export interface ChatMessage {
   changes?: string[];
 }
 
-export type ProviderId = 'local' | 'openai' | 'anthropic' | 'gemini' | 'openrouter' | 'custom';
+export type ProviderId = 'local' | 'gemini' | 'openai' | 'anthropic' | 'groq' | 'openrouter' | 'custom';
 
 export interface AiSettings {
   provider: ProviderId;

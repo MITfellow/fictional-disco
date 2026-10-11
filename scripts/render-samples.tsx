@@ -5,16 +5,17 @@ import fs from 'node:fs';
 import { registerFonts } from '../src/pdf/fonts';
 import { PdfDocument, type PageMap } from '../src/pdf/PdfDocument';
 import * as T from '../src/ai/templates';
+import { buildScienceNotes } from '../src/ai/science';
 import type { DocSpec } from '../src/types';
 
-const fs_ = (p: string) => path.resolve('node_modules/@fontsource', p);
-registerFonts({
-  sans: { 400: fs_('inter/files/inter-latin-400-normal.woff'), '400i': fs_('inter/files/inter-latin-400-italic.woff'), 600: fs_('inter/files/inter-latin-600-normal.woff'), 700: fs_('inter/files/inter-latin-700-normal.woff'), '700i': fs_('inter/files/inter-latin-700-italic.woff'), 800: fs_('inter/files/inter-latin-800-normal.woff') },
-  serif: { 400: fs_('merriweather/files/merriweather-latin-400-normal.woff'), '400i': fs_('merriweather/files/merriweather-latin-400-italic.woff'), 700: fs_('merriweather/files/merriweather-latin-700-normal.woff'), '700i': fs_('merriweather/files/merriweather-latin-700-italic.woff'), 900: fs_('merriweather/files/merriweather-latin-900-normal.woff') },
-  mono: { 400: fs_('jetbrains-mono/files/jetbrains-mono-latin-400-normal.woff'), 700: fs_('jetbrains-mono/files/jetbrains-mono-latin-700-normal.woff') },
-});
+registerFonts((f) => path.resolve('node_modules/@fontsource', f));
 
 const docs: Record<string, DocSpec> = {
+  projectile: buildScienceNotes('projectile'),
+  forces: buildScienceNotes('forces'),
+  shm: buildScienceNotes('oscillations'),
+  circuits: buildScienceNotes('circuits'),
+  optics: buildScienceNotes('optics'),
   welcome: T.buildWelcome(),
   report: T.buildReport('renewable energy'),
   proposal: T.buildProposal('website redesign'),

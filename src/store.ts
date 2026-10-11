@@ -60,7 +60,7 @@ export function welcomeMessage(): ChatMessage {
     role: 'assistant',
     time: Date.now(),
     engine: 'Fluent PDF Studio',
-    text: "Hi! I'm your **AI document designer**. Tell me what to create — a report, proposal, résumé, invoice, study guide, project plan… — and I'll write, design and typeset it as a real PDF on the right.\n\nYou can keep refining: *add a pie chart*, *add flowchart: Idea -> Build -> Test? -> Launch*, *switch to the royal theme*, *landscape*, *add a cover page*. Attach images with the paperclip button (or paste / drop them here).",
+    text: "Hi! I'm your **AI document designer**. Tell me what to make and I'll write, draw and typeset it as a real PDF on the right: physics or maths notes with equations, plots and diagrams, lab reports, worksheets, reports, proposals and more.\n\nKeep refining in plain words, e.g. *add a worked example*, *add a graph of $v$ against $t$*, *make it landscape*, *add a cover page*. Attach images with the paperclip button, or paste or drop them here.",
   };
 }
 

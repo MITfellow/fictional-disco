@@ -3,6 +3,8 @@
 import type { Asset, Block, BlockType, ChartBlock, DocSpec, PageSize, ThemeName } from '../types';
 import { uid } from '../normalize';
 import * as T from './templates';
+import { buildScienceNotes, detectScienceTopic } from './science';
+import { safeCompile } from '../pdf/expr';
 
 export interface EngineResult {
   reply: string;
@@ -112,6 +114,17 @@ export function runLocal(promptRaw: string, current: DocSpec, attachments: Asset
     doc = { meta: { ...doc.meta, title: 'Untitled document', subtitle: undefined, cover: false, toc: false }, blocks: [] };
     return { reply: 'Cleared the canvas. What should we create?', doc, changes: ['Cleared document'] };
   }
+  const sci = detectScienceTopic(p);
+  if (sci && !/^(add|insert|append|include|put)\b/.test(p) && (CREATE_RE.test(p) || isFresh || /\b(notes?|lecture|explain|teach|chapter|worksheet)\b/.test(p))) {
+    doc = buildScienceNotes(sci, { theme: pickTheme(p), style: /\bmodern\b/.test(p) ? 'modern' : undefined });
+    applyStyleEdits(p, prompt, doc, changes);
+    changes.push(`New ${sci} notes`);
+    return {
+      reply: `Here are typeset **${doc.meta.title}** notes: MathJax-quality numbered equations, a vector diagram, a function plot, highlighted boxes for laws and key formulas, and a step-by-step worked example.\n\nTry *switch to modern style*, *add equation: F = G m_1 m_2 / r^2*, or *add plot of sin(x)/x*. For any other topic, connect a free **Gemini** or **Groq** key in Settings and the AI will write and draw it from scratch.`,
+      doc,
+      changes,
+    };
+  }
   if (wantsNew) {
     const topic = extractTopic(prompt);
     const theme = pickTheme(p);
@@ -210,7 +223,45 @@ export function runLocal(promptRaw: string, current: DocSpec, attachments: Asset
       changes.push(`Flowchart with ${f.nodes.length} nodes`);
     }
   } else if (isAdd) {
-    if (/\b(mind ?map|concept map|brainstorm)\b/.test(p)) {
+    // science blocks
+    const eqm = /\b(?:equation|formula|latex|math)\b\s*:?\s*(.+)$/i.exec(prompt);
+    if (eqm && /[=^_\\]/.test(eqm[1])) {
+      add.push({ id: uid(), type: 'equation', latex: eqm[1].replace(/^\$+|\$+$/g, '').trim(), numbered: true });
+      changes.push('Equation');
+    }
+    const plm = /\b(?:plot|graph)\b\s*(?:of|for)?\s*:?\s*(?:y\s*=\s*|f\(x\)\s*=\s*)?(.+?)(?:\s+from\s+(-?[\d.]+)\s+to\s+(-?[\d.]+))?$/i.exec(prompt);
+    let plotted = false;
+    if (plm && /x/.test(plm[1]) && plm[1].length < 80) {
+      const exprs = plm[1].split(/\s*(?:,|;|\band\b)\s*/).filter((e) => safeCompile(e));
+      if (exprs.length) {
+        const xr: [number, number] | undefined = plm[2] && plm[3] ? [Number(plm[2]), Number(plm[3])] : undefined;
+        add.push({ id: uid(), type: 'plot', functions: exprs.map((e) => ({ expr: e, label: `$y = ${e.replace(/\*/g, ' ')}$` })), xRange: xr ?? [-2 * Math.PI, 2 * Math.PI], xLabel: '$x$', yLabel: '$y$', caption: `Graph of ${exprs.map((e) => `$y = ${e.replace(/\*/g, ' ')}$`).join(', ')}` });
+        changes.push('Function plot');
+        plotted = true;
+      }
+    }
+    if (/\b(free[- ]?body|fbd|incline|inclined plane)\b/.test(p)) {
+      const fb = buildScienceNotes('forces').blocks.find((b) => b.type === 'figure');
+      if (fb) add.push({ ...fb, id: uid() });
+      changes.push('Free-body diagram');
+    } else if (/\b(circuit)\b/.test(p)) {
+      const fb = buildScienceNotes('circuits').blocks.find((b) => b.type === 'figure');
+      if (fb) add.push({ ...fb, id: uid() });
+      changes.push('Circuit diagram');
+    } else if (/\b(ray diagram|lens)\b/.test(p)) {
+      const fb = buildScienceNotes('optics').blocks.find((b) => b.type === 'figure');
+      if (fb) add.push({ ...fb, id: uid() });
+      changes.push('Ray diagram');
+    }
+    const boxm = /\b(definition|theorem|law|example|problem|summary|key idea|note|tip)\b\s*(?:box)?\s*:\s*(.+)$/i.exec(prompt);
+    if (boxm) {
+      const variant = boxm[1].toLowerCase() === 'key idea' ? 'key' : (boxm[1].toLowerCase() as 'definition');
+      add.push({ id: uid(), type: 'box', variant, text: boxm[2].trim(), blocks: [] });
+      changes.push(`${cap(boxm[1])} box`);
+    }
+    if (plotted || eqm) {
+      /* handled above */
+    } else if (/\b(mind ?map|concept map|brainstorm)\b/.test(p)) {
       add.push(T.mindmapFor(topic === 'your topic' ? doc.meta.title : topic));
       changes.push('Mind map');
     } else if (/\b(sequence|interaction|api call|handshake)\b/.test(p)) {
@@ -334,6 +385,15 @@ function applyStyleEdits(p: string, raw: string, doc: DocSpec, changes: string[]
   if (/\bserif\b/.test(p) && !/sans/.test(p) && m.font !== 'serif') ((m.font = 'serif'), changes.push('Font → serif'));
   else if (/\bsans(-serif)?\b/.test(p) && m.font !== 'sans') ((m.font = 'sans'), changes.push('Font → sans'));
   else if (/\b(monospace|mono font|typewriter)\b/.test(p) && m.font !== 'mono') ((m.font = 'mono'), changes.push('Font → mono'));
+  if (/\bacademic|scientific style|journal|paper style\b/.test(p) && m.style !== 'academic') ((m.style = 'academic'), (m.font = 'serif'), changes.push('Academic style'));
+  else if (/\bmodern( style)?\b/.test(p) && m.style === 'academic') ((m.style = 'modern'), changes.push('Modern style'));
+  const cs = /\b(orbits?|waves?|grid|gradient|minimal)\s+cover\b/.exec(p) ?? /\bcover\s+(?:style\s+)?(orbits?|waves?|grid|gradient|minimal)\b/.exec(p);
+  if (cs) {
+    const v = cs[1].replace(/s$/, '') as string;
+    m.coverStyle = (v === 'orbit' ? 'orbits' : v === 'wave' ? 'waves' : v) as DocSpec['meta']['coverStyle'];
+    m.cover = true;
+    changes.push(`Cover → ${m.coverStyle}`);
+  }
   if (/\blandscape\b/.test(p) && m.orientation !== 'landscape') ((m.orientation = 'landscape'), changes.push('Landscape'));
   if (/\bportrait\b/.test(p) && m.orientation !== 'portrait') ((m.orientation = 'portrait'), changes.push('Portrait'));
   const size = /\b(a4|a5|letter size|us letter|legal)\b/.exec(p)?.[1];

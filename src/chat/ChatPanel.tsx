@@ -2,15 +2,15 @@ import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent, type 
 import { Avatar, Badge, Button, Caption1, Spinner, Text, Textarea, Tooltip } from '@fluentui/react-components';
 import {
   Attach20Regular,
-  Book20Regular,
   Building20Regular,
-  CalendarLtr20Regular,
   ChartMultiple20Regular,
-  Delete20Regular,
+  ChevronDown16Regular,
   Dismiss16Regular,
-  Flowchart20Regular,
+  Key20Regular,
+  Lightbulb20Regular,
   Person24Filled,
-  Receipt20Regular,
+  Timeline20Regular,
+  Book20Regular,
   Send24Filled,
   Sparkle20Filled,
   Stop24Filled,
@@ -20,12 +20,12 @@ import { Markdown } from './Markdown';
 import { fileToAsset } from '../images';
 
 const SUGGESTIONS = [
+  { icon: <Timeline20Regular />, title: 'Projectile motion', prompt: 'Create physics lecture notes on projectile motion with equations, a trajectory diagram, a plot and a worked example' },
+  { icon: <Lightbulb20Regular />, title: 'DC circuits', prompt: "Make notes on DC circuits and Ohm's law with a circuit diagram and I–V graph" },
+  { icon: <Book20Regular />, title: 'Simple harmonic motion', prompt: 'Write notes on simple harmonic motion: springs, pendulum, energy plots' },
+  { icon: <Timeline20Regular />, title: 'Thin lenses', prompt: 'Create optics notes on thin lenses with a ray diagram and the lens equation' },
   { icon: <ChartMultiple20Regular />, title: 'Annual report', prompt: 'Create an annual report about renewable energy with charts, KPIs and a roadmap' },
   { icon: <Building20Regular />, title: 'Business proposal', prompt: 'Write a proposal for a website redesign with pricing and timeline' },
-  { icon: <Book20Regular />, title: 'Study guide', prompt: 'Make a study guide about photosynthesis with a mind map' },
-  { icon: <Flowchart20Regular />, title: 'Flowchart', prompt: 'Add flowchart: Idea -> Research -> Prototype -> Works? -> [Yes] Launch; Works? -> [No] Research' },
-  { icon: <Receipt20Regular />, title: 'Invoice', prompt: 'Create an invoice for Contoso Ltd' },
-  { icon: <CalendarLtr20Regular />, title: 'Project plan', prompt: 'Build a project plan for a CRM migration in the midnight theme' },
 ];
 
 interface Props {
@@ -37,10 +37,10 @@ interface Props {
   onSend: (text: string, attachments: Asset[]) => void;
   onStop: () => void;
   onOpenSettings: () => void;
-  onClear: () => void;
+  aiConnected: boolean;
 }
 
-export function ChatPanel({ messages, assets, busy, progress, engineLabel, onSend, onStop, onOpenSettings, onClear }: Props) {
+export function ChatPanel({ messages, assets, busy, progress, engineLabel, onSend, onStop, onOpenSettings, aiConnected }: Props) {
   const [text, setText] = useState('');
   const [pending, setPending] = useState<Asset[]>([]);
   const [drag, setDrag] = useState(false);
@@ -113,18 +113,12 @@ export function ChatPanel({ messages, assets, busy, progress, engineLabel, onSen
           </span>
           <div className="stack">
             <Text weight="semibold">AI Designer</Text>
-            <Caption1 className="muted">{engineLabel}</Caption1>
+            <button className="engine-chip" onClick={onOpenSettings} title="Change AI model">
+              <span className={`dot ${aiConnected ? 'on' : ''}`} />
+              {engineLabel}
+              <ChevronDown16Regular />
+            </button>
           </div>
-        </div>
-        <div className="row gap4">
-          <Tooltip content="AI provider & model" relationship="label">
-            <Button size="small" appearance="subtle" onClick={onOpenSettings}>
-              Model
-            </Button>
-          </Tooltip>
-          <Tooltip content="Clear conversation" relationship="label">
-            <Button size="small" appearance="subtle" icon={<Delete20Regular />} onClick={onClear} />
-          </Tooltip>
         </div>
       </header>
 
@@ -173,6 +167,28 @@ export function ChatPanel({ messages, assets, busy, progress, engineLabel, onSen
                   <Caption1>{progress && progress.chars > 0 ? `Designing your document… ${(progress.chars / 1000).toFixed(1)}k chars` : 'Thinking…'}</Caption1>
                 </div>
                 <div className="shimmer" />
+              </div>
+            </div>
+          </div>
+        ) : null}
+        {!aiConnected && !busy && messages.filter((m) => m.role === 'user').length <= 3 ? (
+          <div className="unlock-card">
+            <div className="unlock-icon">
+              <Key20Regular />
+            </div>
+            <div className="stack">
+              <Text weight="semibold">Let the AI write and draw anything, for free</Text>
+              <Caption1>
+                The offline engine only knows built-in templates. Paste a free <b>Google Gemini</b> key (from aistudio.google.com, takes about a minute) or a <b>Groq</b> key, and the AI takes full control: any topic, its
+                own equations, plots, diagrams and layout.
+              </Caption1>
+              <div className="row gap8" style={{ marginTop: 6 }}>
+                <Button size="small" appearance="primary" onClick={onOpenSettings}>
+                  Connect free AI
+                </Button>
+                <Button size="small" appearance="subtle" as="a" href="https://aistudio.google.com/app/apikey" target="_blank">
+                  Get a Gemini key
+                </Button>
               </div>
             </div>
           </div>

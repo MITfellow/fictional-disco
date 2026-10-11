@@ -304,3 +304,27 @@ body.resizing iframe, body.resizing canvas { pointer-events: none; }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--colorNeutralForeground1) 18%, transparent); border-radius: 10px; border: 2px solid transparent; background-clip: padding-box; }
 ::-webkit-scrollbar-thumb:hover { background-color: color-mix(in srgb, var(--colorNeutralForeground1) 30%, transparent); }
+
+/* ------------------------------------------------------- round 2 additions */
+.engine-chip {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 2px; padding: 1px 8px 1px 6px;
+  border: 1px solid var(--colorNeutralStroke2); border-radius: 999px; background: var(--colorNeutralBackground2);
+  color: var(--colorNeutralForeground2); font: inherit; font-size: 11.5px; cursor: pointer; max-width: 260px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: background 0.15s, border-color 0.15s;
+}
+.engine-chip:hover { background: var(--colorSubtleBackgroundHover); border-color: var(--colorBrandStroke1); }
+.engine-chip .dot { width: 7px; height: 7px; border-radius: 50%; background: #f59e0b; flex-shrink: 0; }
+.engine-chip .dot.on { background: #22c55e; box-shadow: 0 0 0 3px color-mix(in srgb, #22c55e 25%, transparent); }
+.unlock-card {
+  display: flex; gap: 12px; padding: 12px 14px; border-radius: 12px; animation: rise 0.25s ease-out;
+  border: 1px solid color-mix(in srgb, var(--colorBrandStroke1) 45%, transparent);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--colorBrandBackground) 10%, var(--colorNeutralBackground1)), var(--colorNeutralBackground1));
+}
+.unlock-card .stack { gap: 3px; line-height: 1.4; }
+.unlock-icon {
+  width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0; display: grid; place-items: center; color: #fff;
+  background: linear-gradient(135deg, #6d5dfc, #22b8cf);
+}
+.preview-title { font-weight: 600; color: var(--colorNeutralForeground2); padding-left: 4px; }
+.math { font-family: 'STIX Two Text', 'Cambria Math', 'Times New Roman', serif; font-size: 1.06em; }
+.math sup, .math sub { font-size: 0.72em; }

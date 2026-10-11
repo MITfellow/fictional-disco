@@ -22,6 +22,7 @@ export interface Label {
   valign?: 'top' | 'middle' | 'bottom';
   bg?: string;
   italic?: boolean;
+  rich?: boolean; // contains inline markdown / $math$
 }
 
 export interface Scene {
@@ -133,4 +134,21 @@ export function wrapText(text: string, maxChars: number): string[] {
 
 export function textWidth(text: string, size: number, bold = false) {
   return text.length * charW(size, bold);
+}
+
+/** Width estimate for labels that may contain $math$ (commands collapse to ~1 glyph). */
+export function richWidth(text: string, size: number, bold = false) {
+  const t = String(text ?? '')
+    .replace(/\$([^$]*)\$/g, (_, m: string) =>
+      m
+        .replace(/\\(?:text|mathrm|mathbf|operatorname)\{([^}]*)\}/g, '$1')
+        .replace(/\\(frac|dfrac|tfrac|left|right|vec|hat|bar|mathbf|boldsymbol)/g, '')
+        .replace(/\\(sin|cos|tan|log|ln|exp|lim|max|min|det)/g, '$1 ')
+        .replace(/\\[,;:! ]/g, ' ')
+        .replace(/\\[A-Za-z]+/g, 'x')
+        .replace(/[{}\\]/g, '')
+        .replace(/([=+<>−-])/g, ' $1 '),
+    )
+    .replace(/\*\*|`/g, '');
+  return t.length * charW(size, bold) + 4;
 }

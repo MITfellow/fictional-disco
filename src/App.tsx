@@ -7,8 +7,6 @@ import {
   MessageBar,
   MessageBarBody,
   Spinner,
-  Tab,
-  TabList,
   Toolbar,
   ToolbarButton,
   ToolbarDivider,
@@ -21,9 +19,7 @@ import {
   ArrowDownload20Regular,
   ArrowRedo20Regular,
   ArrowUndo20Regular,
-  Braces20Regular,
-  Eye20Regular,
-  ListBar20Regular,
+  DocumentAdd20Regular,
   Open20Regular,
   PageFit20Regular,
   ArrowFit20Regular,
@@ -33,7 +29,7 @@ import {
   ZoomIn20Regular,
   ZoomOut20Regular,
 } from '@fluentui/react-icons';
-import type { Asset, DocMeta, DocSpec } from './types';
+import type { Asset } from './types';
 import { useDarkMode, useSettings, useStudio } from './store';
 import { ChatPanel } from './chat/ChatPanel';
 import { PdfPreview, type Zoom } from './preview/PdfPreview';
@@ -41,10 +37,8 @@ import { compiler } from './pdf/client';
 import { runAssistant } from './ai/engine';
 import { PROVIDERS } from './ai/providers';
 import { uid } from './normalize';
-import { OutlinePanel } from './components/OutlinePanel';
-import { JsonPanel } from './components/JsonPanel';
 import { SettingsDialog } from './components/SettingsDialog';
-import { NewMenu, PageSetup, ThemeMenu } from './components/DocControls';
+import { buildWelcome } from './ai/templates';
 
 const lightTheme: Theme = { ...webLightTheme, fontFamilyBase: "'Segoe UI Variable', 'Segoe UI', Inter, system-ui, sans-serif" };
 const darkTheme: Theme = { ...webDarkTheme, fontFamilyBase: "'Segoe UI Variable', 'Segoe UI', Inter, system-ui, sans-serif" };
@@ -59,7 +53,6 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<{ chars: number; reply: string } | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [tab, setTab] = useState<'preview' | 'outline' | 'json'>('preview');
   const [zoom, setZoom] = useState<Zoom>('fit');
   const [pdfData, setPdfData] = useState<ArrayBuffer | null>(null);
   const [compiling, setCompiling] = useState(false);
@@ -98,7 +91,10 @@ export default function App() {
   }, [doc, assets]);
 
   // ------------------------------------------------------------ actions
-  const onMeta = useCallback((m: Partial<DocMeta>) => setDoc({ ...doc, meta: { ...doc.meta, ...m } }), [doc, setDoc]);
+  const newDoc = useCallback(() => {
+    setDoc(buildWelcome());
+    dispatch({ type: 'clearChat' });
+  }, [setDoc, dispatch]);
 
   const download = useCallback(() => {
     if (!lastBlob.current) return;
@@ -141,7 +137,6 @@ export default function App() {
         });
         if (JSON.stringify(res.doc) !== JSON.stringify(doc)) setDoc(res.doc);
         dispatch({ type: 'addMessage', msg: { id: uid('m'), role: 'assistant', text: res.reply, time: Date.now(), engine: res.engine, changes: res.changes } });
-        setTab('preview');
       } catch (e) {
         const aborted = e instanceof DOMException && e.name === 'AbortError';
         dispatch({
@@ -214,8 +209,8 @@ export default function App() {
 
   const engineLabel = useMemo(() => {
     const p = PROVIDERS[settings.provider];
-    if (settings.provider === 'local' || (!settings.apiKey && settings.provider !== 'custom')) return settings.provider === 'local' ? 'Built-in engine · offline' : `${p.label} · no key — using built-in engine`;
-    return `${p.label} · ${settings.model || p.defaultModel}`;
+    if (settings.provider === 'local' || (!settings.apiKey && settings.provider !== 'custom')) return settings.provider === 'local' ? 'Offline engine' : `${p.label.replace(/ —.*/, '')} · add key`;
+    return `${p.label.replace(/ —.*/, '')} · ${settings.model || p.defaultModel}`;
   }, [settings]);
 
   const zoomStep = (d: number) => {
@@ -236,22 +231,15 @@ export default function App() {
         </div>
         <input className="doc-title" value={doc.meta.title} onChange={(e) => setDoc({ ...doc, meta: { ...doc.meta, title: e.target.value } }, false)} aria-label="Document title" spellCheck={false} />
         <Toolbar className="top-tools" size="small">
-          <NewMenu
-            onPick={(d: DocSpec) => {
-              setDoc(d);
-              setTab('preview');
-            }}
-          />
-          <ToolbarDivider />
+          <Tooltip content="New document" relationship="label">
+            <ToolbarButton icon={<DocumentAdd20Regular />} onClick={newDoc} />
+          </Tooltip>
           <Tooltip content="Undo (Ctrl+Z)" relationship="label">
             <ToolbarButton icon={<ArrowUndo20Regular />} disabled={!past.length} onClick={() => dispatch({ type: 'undo' })} />
           </Tooltip>
           <Tooltip content="Redo (Ctrl+Shift+Z)" relationship="label">
             <ToolbarButton icon={<ArrowRedo20Regular />} disabled={!future.length} onClick={() => dispatch({ type: 'redo' })} />
           </Tooltip>
-          <ToolbarDivider />
-          <ThemeMenu meta={doc.meta} onMeta={onMeta} />
-          <PageSetup meta={doc.meta} onMeta={onMeta} />
           <ToolbarDivider />
           <Tooltip content={dark ? 'Light mode' : 'Dark mode'} relationship="label">
             <ToolbarButton icon={dark ? <WeatherSunny20Regular /> : <WeatherMoon20Regular />} onClick={() => setDark(!dark)} />
@@ -276,7 +264,7 @@ export default function App() {
             onSend={send}
             onStop={() => abortRef.current?.abort()}
             onOpenSettings={() => setSettingsOpen(true)}
-            onClear={() => dispatch({ type: 'clearChat' })}
+            aiConnected={settings.provider !== 'local' && (!!settings.apiKey || settings.provider === 'custom')}
           />
         </div>
         <div
@@ -292,17 +280,7 @@ export default function App() {
         />
         <section className="panel preview">
           <header className="panel-head">
-            <TabList size="small" selectedValue={tab} onTabSelect={(_, d) => setTab(d.value as typeof tab)}>
-              <Tab value="preview" icon={<Eye20Regular />}>
-                Preview
-              </Tab>
-              <Tab value="outline" icon={<ListBar20Regular />}>
-                Outline
-              </Tab>
-              <Tab value="json" icon={<Braces20Regular />}>
-                Source
-              </Tab>
-            </TabList>
+            <Caption1 className="preview-title">Live PDF</Caption1>
             <div className="row gap4 preview-tools">
               {compiling ? (
                 <span className="row gap4 compiling">
@@ -317,7 +295,7 @@ export default function App() {
                   {info.pages} page{info.pages === 1 ? '' : 's'} · {compileMs} ms
                 </Caption1>
               )}
-              {tab === 'preview' ? (
+              {(
                 <>
                   <ToolbarDivider />
                   <Tooltip content="Zoom out" relationship="label">
@@ -337,7 +315,7 @@ export default function App() {
                     <Button size="small" appearance="subtle" icon={<Open20Regular />} onClick={openTab} disabled={!pdfData} />
                   </Tooltip>
                 </>
-              ) : null}
+              )}
             </div>
           </header>
           {compileError ? (
@@ -346,7 +324,7 @@ export default function App() {
             </MessageBar>
           ) : null}
           <div className="preview-body">
-            <div className={`tab-pane ${tab === 'preview' ? 'active' : ''}`}>
+            <div className="tab-pane active">
               {pdfData ? null : (
                 <div className="preview-loading">
                   <Spinner label="Compiling your first PDF…" />
@@ -359,16 +337,6 @@ export default function App() {
                 </div>
               ) : null}
             </div>
-            {tab === 'outline' ? (
-              <div className="tab-pane active scroll">
-                <OutlinePanel doc={doc} onChange={setDoc} />
-              </div>
-            ) : null}
-            {tab === 'json' ? (
-              <div className="tab-pane active">
-                <JsonPanel doc={doc} onChange={setDoc} />
-              </div>
-            ) : null}
           </div>
         </section>
       </main>

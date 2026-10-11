@@ -9,9 +9,10 @@ export interface InlineToken {
   strike?: boolean;
   mark?: boolean;
   href?: string;
+  math?: boolean; // inline TeX between $...$
 }
 
-const RE = /(\*\*[^*]+?\*\*|__[^_]+?__|\*[^*\s][^*]*?\*|_[^_\s][^_]*?_|`[^`]+?`|~~[^~]+?~~|==[^=]+?==|\[[^\]]+?\]\([^)]+?\))/g;
+const RE = /(\$[^\s$](?:[^$]*?[^\s$\\])?\$(?!\d)|\\\([\s\S]+?\\\)|\*\*[^*]+?\*\*|__[^_]+?__|\*[^*\s][^*]*?\*|_[^_\s][^_]*?_|`[^`]+?`|~~[^~]+?~~|==[^=]+?==|\[[^\]]+?\]\([^)]+?\))/g;
 
 export function tokenizeInline(src: string, base: Omit<InlineToken, 'text'> = {}): InlineToken[] {
   const out: InlineToken[] = [];
@@ -21,7 +22,9 @@ export function tokenizeInline(src: string, base: Omit<InlineToken, 'text'> = {}
     const idx = m.index ?? 0;
     if (idx > last) out.push({ ...base, text: src.slice(last, idx) });
     const t = m[0];
-    if (t.startsWith('**') || t.startsWith('__')) out.push(...tokenizeInline(t.slice(2, -2), { ...base, bold: true }));
+    if (t.startsWith('$')) out.push({ ...base, text: t.slice(1, -1), math: true });
+    else if (t.startsWith('\\(')) out.push({ ...base, text: t.slice(2, -2), math: true });
+    else if (t.startsWith('**') || t.startsWith('__')) out.push(...tokenizeInline(t.slice(2, -2), { ...base, bold: true }));
     else if (t.startsWith('`')) out.push({ ...base, text: t.slice(1, -1), code: true });
     else if (t.startsWith('~~')) out.push(...tokenizeInline(t.slice(2, -2), { ...base, strike: true }));
     else if (t.startsWith('==')) out.push(...tokenizeInline(t.slice(2, -2), { ...base, mark: true }));
@@ -38,6 +41,6 @@ export function tokenizeInline(src: string, base: Omit<InlineToken, 'text'> = {}
 
 export function stripInline(src: string): string {
   return tokenizeInline(src)
-    .map((t) => t.text)
+    .map((t) => (t.math ? t.text.replace(/\\([A-Za-z]+)/g, '$1').replace(/[{}]/g, '') : t.text))
     .join('');
 }

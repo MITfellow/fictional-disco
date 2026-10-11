@@ -1,14 +1,18 @@
-import { Document, Image, Link, Page, Path, Polygon, Rect, Circle, Svg, Text, View } from '@react-pdf/renderer';
+import { Document, Ellipse, G, Image, Line, Link, Page, Path, Polygon, Rect, Circle, Svg, Text, View } from '@react-pdf/renderer';
 import type { ReactNode } from 'react';
 import type { Style } from '@react-pdf/types';
-import type { Asset, Block, DocSpec, ListBlock, TableBlock } from '../types';
+import type { Asset, Block, BoxBlock, BoxVariant, DocSpec, ListBlock, StepsBlock, TableBlock } from '../types';
 import { THEMES, TONES, type PdfTheme } from '../themes';
-import { FAMILY, MONO } from './fonts';
+import { FAMILY, MATH, MONO } from './fonts';
 import { tokenizeInline } from '../inline';
 import { layoutDiagram } from './diagramLayout';
 import { layoutChart } from './chartLayout';
 import { scaleScene, tint, shade } from './scene';
 import { SceneView } from './SceneView';
+import { MathSvg } from './MathSvg';
+import { layoutPlot } from './plotLayout';
+import { layoutFigure } from './figureLayout';
+import { texToRuns } from './texInline';
 
 export const PAGE_DIMS: Record<string, [number, number]> = {
   A4: [595.28, 841.89],
@@ -21,7 +25,10 @@ export type PageMap = Record<string, number>;
 
 interface Ctx {
   theme: PdfTheme;
-  font: string;
+  font: string[];
+  academic: boolean;
+  eq: { n: number };
+  boxes: Record<string, number>;
   contentW: number;
   contentH: number;
   assets: Record<string, Asset>;
@@ -34,11 +41,39 @@ interface Ctx {
 }
 
 // ------------------------------------------------------------------ inline
-function Inline({ text, ctx, color }: { text: string; ctx: Ctx; color?: string }) {
+function MathRuns({ tex, size, ctx, color, bold }: { tex: string; size: number; ctx: Ctx; color?: string; bold?: boolean }) {
+  const runs = texToRuns(tex);
+  return (
+    <>
+      {runs.map((r, i) => {
+        const lv = r.level ?? 0;
+        const fs = lv ? size * (lv === 1 ? 0.72 : 0.6) : size * 1.06;
+        return (
+          <Text
+            key={i}
+            style={{
+              fontFamily: r.upright ? ctx.font : MATH,
+              fontStyle: r.italic ? 'italic' : 'normal',
+              fontWeight: r.bold || bold ? 700 : 400,
+              fontSize: fs,
+              verticalAlign: r.va,
+              color,
+            }}
+          >
+            {r.text}
+          </Text>
+        );
+      })}
+    </>
+  );
+}
+
+function Inline({ text, ctx, color, size = 10.5 }: { text: string; ctx: Ctx; color?: string; size?: number }) {
   const toks = tokenizeInline(String(text ?? ''));
   return (
     <>
       {toks.map((t, i) => {
+        if (t.math) return <MathRuns key={i} tex={t.text} size={size} ctx={ctx} color={color} bold={t.bold} />;
         const style: Style = {};
         if (t.bold) style.fontWeight = 700;
         if (t.italic) style.fontStyle = 'italic';
@@ -82,13 +117,25 @@ function Heading({ b, ctx }: { b: Extract<Block, { type: 'heading' }>; ctx: Ctx 
       }}
     />
   );
+  if (ctx.academic) {
+    const sz = b.level === 1 ? 15.5 : b.level === 2 ? 12.5 : 11;
+    return (
+      <View id={b.id} minPresenceAhead={60} style={{ marginTop: b.level === 1 ? 18 : 12, marginBottom: b.level === 1 ? 7 : 5 }}>
+        {tracker}
+        <Text style={{ fontSize: sz, fontWeight: 700, fontStyle: b.level === 3 ? 'italic' : 'normal', color: b.level === 1 ? theme.primaryDark : theme.text, lineHeight: 1.3 }}>
+          {num ? <Text>{num.replace(/\.$/, '')}{'   '}</Text> : null}
+          <Inline text={b.text} ctx={ctx} size={sz} />
+        </Text>
+      </View>
+    );
+  }
   if (b.level === 1)
     return (
       <View id={b.id} minPresenceAhead={80} style={{ marginTop: 20, marginBottom: 10 }}>
         {tracker}
         <Text style={{ fontSize: 20, fontWeight: 800, color: theme.primaryDark, lineHeight: 1.25 }}>
           {num ? <Text style={{ color: theme.primary }}>{num}  </Text> : null}
-          <Inline text={b.text} ctx={ctx} />
+          <Inline text={b.text} ctx={ctx} size={ctx.academic ? 15.5 : 20} />
         </Text>
         <View style={{ flexDirection: 'row', marginTop: 6 }}>
           <View style={{ width: 36, height: 3, backgroundColor: theme.primary, borderRadius: 2 }} />
@@ -102,7 +149,7 @@ function Heading({ b, ctx }: { b: Extract<Block, { type: 'heading' }>; ctx: Ctx 
         {tracker}
         <Text style={{ fontSize: 14, fontWeight: 700, color: theme.text, lineHeight: 1.3 }}>
           {num ? <Text style={{ color: theme.primary }}>{num}  </Text> : null}
-          <Inline text={b.text} ctx={ctx} />
+          <Inline text={b.text} ctx={ctx} size={ctx.academic ? 12.5 : 14} />
         </Text>
       </View>
     );
@@ -110,7 +157,7 @@ function Heading({ b, ctx }: { b: Extract<Block, { type: 'heading' }>; ctx: Ctx 
     <View id={b.id} minPresenceAhead={50} style={{ marginTop: 10, marginBottom: 4 }}>
       {tracker}
       <Text style={{ fontSize: 11.5, fontWeight: 700, color: theme.primary, lineHeight: 1.3 }}>
-        <Inline text={b.text} ctx={ctx} />
+        <Inline text={b.text} ctx={ctx} size={11.5} />
       </Text>
     </View>
   );
@@ -193,6 +240,42 @@ function TableView({ b, ctx }: { b: TableBlock; ctx: Ctx }) {
   const alignFor = (c: number, s: string) => b.align?.[c] ?? (c > 0 && isNum(s) ? 'right' : 'left');
   ctx.table.n++;
   const rows = b.rows ?? [];
+  if (ctx.academic) {
+    const w = (c: number) => `${(weights[c] / total) * 100}%`;
+    return (
+      <View style={{ marginVertical: 10 }}>
+        {b.caption ? (
+          <Text style={{ fontSize: 9, color: theme.text, marginBottom: 5, textAlign: 'center' }}>
+            <Text style={{ fontWeight: 700 }}>Table {ctx.table.n}: </Text>
+            <Inline text={b.caption} ctx={ctx} size={9} />
+          </Text>
+        ) : null}
+        <View style={{ borderTopWidth: 1.1, borderBottomWidth: 1.1, borderColor: theme.text }}>
+          {headers.length ? (
+            <View style={{ flexDirection: 'row', borderBottomWidth: 0.6, borderBottomColor: theme.text }} wrap={false}>
+              {Array.from({ length: cols }, (_, c) => (
+                <Text key={c} style={{ width: w(c), paddingVertical: 4.5, paddingHorizontal: 6, fontSize: 9, fontWeight: 700, textAlign: alignFor(c, String(rows[0]?.[c] ?? '')) }}>
+                  <Inline text={headers[c] ?? ''} ctx={ctx} size={9} />
+                </Text>
+              ))}
+            </View>
+          ) : null}
+          {rows.map((r, ri) => {
+            const isTotal = b.totalRow && ri === rows.length - 1;
+            return (
+              <View key={ri} wrap={false} style={{ flexDirection: 'row', borderTopWidth: isTotal ? 0.6 : 0, borderTopColor: theme.text }}>
+                {Array.from({ length: cols }, (_, c) => (
+                  <Text key={c} style={{ width: w(c), paddingVertical: 3.2, paddingHorizontal: 6, fontSize: 9, lineHeight: 1.4, fontWeight: isTotal ? 700 : 400, textAlign: alignFor(c, String(r[c] ?? '')) }}>
+                    <Inline text={String(r[c] ?? '')} ctx={ctx} size={9} />
+                  </Text>
+                ))}
+              </View>
+            );
+          })}
+        </View>
+      </View>
+    );
+  }
   return (
     <View style={{ marginVertical: 8 }}>
       <View style={{ borderRadius: 6, borderWidth: 1, borderColor: theme.border, overflow: 'hidden' }}>
@@ -211,7 +294,7 @@ function TableView({ b, ctx }: { b: TableBlock; ctx: Ctx }) {
                   textAlign: alignFor(c, String(rows[0]?.[c] ?? '')),
                 }}
               >
-                {headers[c] ?? ''}
+                <Inline text={headers[c] ?? ''} ctx={ctx} size={8.8} color="#ffffff" />
               </Text>
             ))}
           </View>
@@ -243,7 +326,7 @@ function TableView({ b, ctx }: { b: TableBlock; ctx: Ctx }) {
                     textAlign: alignFor(c, String(r[c] ?? '')),
                   }}
                 >
-                  <Inline text={String(r[c] ?? '')} ctx={ctx} />
+                  <Inline text={String(r[c] ?? '')} ctx={ctx} size={9} />
                 </Text>
               ))}
             </View>
@@ -253,7 +336,7 @@ function TableView({ b, ctx }: { b: TableBlock; ctx: Ctx }) {
       {b.caption ? (
         <Text style={{ fontSize: 8.5, color: theme.muted, marginTop: 4, textAlign: 'center' }}>
           <Text style={{ fontWeight: 700, color: theme.primary }}>Table {ctx.table.n}. </Text>
-          {b.caption}
+          <Inline text={b.caption} ctx={ctx} size={8.5} />
         </Text>
       ) : null}
     </View>
@@ -263,19 +346,29 @@ function TableView({ b, ctx }: { b: TableBlock; ctx: Ctx }) {
 function Caption({ text, ctx }: { text?: string; ctx: Ctx }) {
   if (!text) return null;
   ctx.figure.n++;
+  if (ctx.academic)
+    return (
+      <Text style={{ fontSize: 9, color: ctx.theme.text, marginTop: 6, textAlign: 'center', lineHeight: 1.45, paddingHorizontal: 20 }}>
+        <Text style={{ fontWeight: 700 }}>Figure {ctx.figure.n}: </Text>
+        <Inline text={text} ctx={ctx} size={9} />
+      </Text>
+    );
   return (
-    <Text style={{ fontSize: 8.5, color: ctx.theme.muted, marginTop: 6, textAlign: 'center' }}>
+    <Text style={{ fontSize: 8.5, color: ctx.theme.muted, marginTop: 6, textAlign: 'center', lineHeight: 1.45 }}>
       <Text style={{ fontWeight: 700, color: ctx.theme.primary }}>Figure {ctx.figure.n}. </Text>
-      {text}
+      <Inline text={text} ctx={ctx} size={8.5} />
     </Text>
   );
 }
 
 function FigureCard({ children, ctx }: { children: ReactNode; ctx: Ctx }) {
+  if (ctx.academic) return <View style={{ paddingVertical: 4, alignItems: 'center' }}>{children}</View>;
   return (
     <View style={{ borderWidth: 1, borderColor: ctx.theme.border, borderRadius: 8, padding: 12, backgroundColor: '#ffffff', alignItems: 'center' }}>{children}</View>
   );
 }
+
+const rich = (ctx: Ctx) => (text: string, size: number) => <Inline text={text} ctx={ctx} size={size} />;
 
 function ToneIcon({ tone, color }: { tone: keyof typeof TONES; color: string }) {
   return (
@@ -351,6 +444,146 @@ function TrendIcon({ trend }: { trend: 'up' | 'down' | 'flat' }) {
   );
 }
 
+// ------------------------------------------------------------ science boxes
+const BOX_STYLE: Record<BoxVariant, { label: string; color?: string; numbered?: boolean }> = {
+  definition: { label: 'Definition', numbered: true },
+  theorem: { label: 'Theorem', color: '#7c3aed', numbered: true },
+  law: { label: 'Law', color: '#0e7490', numbered: false },
+  principle: { label: 'Principle', color: '#0f766e' },
+  example: { label: 'Example', color: '#059669', numbered: true },
+  problem: { label: 'Problem', color: '#ea580c', numbered: true },
+  solution: { label: 'Solution', color: '#16a34a' },
+  proof: { label: 'Proof', color: '#475569' },
+  note: { label: 'Note', color: '#6366f1' },
+  tip: { label: 'Tip', color: '#0284c7' },
+  warning: { label: 'Caution', color: '#d97706' },
+  summary: { label: 'Summary' },
+  key: { label: 'Key idea', color: '#db2777' },
+  formula: { label: 'Key formulas' },
+  abstract: { label: 'Abstract' },
+};
+
+function boxContentLength(b: BoxBlock): number {
+  let n = (b.text ?? '').length;
+  for (const c of b.blocks ?? []) n += c.type === 'paragraph' ? c.text.length : c.type === 'list' ? c.items.join(' ').length + c.items.length * 40 : c.type === 'equation' ? 120 : c.type === 'table' ? 60 * (c.rows.length + 1) : c.type === 'plot' || c.type === 'figure' ? 700 : 200;
+  return n;
+}
+
+function BoxView({ b, ctx }: { b: BoxBlock; ctx: Ctx }) {
+  const { theme } = ctx;
+  const st = BOX_STYLE[b.variant] ?? BOX_STYLE.note;
+  const color = st.color ?? (b.variant === 'summary' ? theme.primaryDark : theme.primary);
+  let label = st.label;
+  if (st.numbered) {
+    ctx.boxes[b.variant] = (ctx.boxes[b.variant] ?? 0) + 1;
+    label += ` ${ctx.boxes[b.variant]}`;
+  }
+  const inner: Ctx = { ...ctx, contentW: ctx.contentW - 30 };
+  const body = (
+    <>
+      {b.text ? (
+        <Text style={{ fontSize: 10.2, lineHeight: 1.55, color: theme.text, marginBottom: b.blocks?.length ? 4 : 0, fontStyle: b.variant === 'theorem' && ctx.academic ? 'italic' : 'normal' }}>
+          <Inline text={b.text} ctx={ctx} size={10.2} />
+        </Text>
+      ) : null}
+      {(b.blocks ?? []).map((c) => (
+        <BlockView key={c.id} b={c} ctx={inner} />
+      ))}
+    </>
+  );
+  const keep = boxContentLength(b) < 900;
+  if (b.variant === 'abstract')
+    return (
+      <View wrap={keep ? false : undefined} style={{ marginHorizontal: ctx.academic ? 28 : 0, marginVertical: 10 }}>
+        <Text style={{ fontSize: 9.5, fontWeight: 700, textAlign: ctx.academic ? 'center' : 'left', color: ctx.academic ? theme.text : theme.primary, letterSpacing: ctx.academic ? 0 : 1, marginBottom: 4 }}>
+          {ctx.academic ? 'Abstract' : 'ABSTRACT'}
+        </Text>
+        <View style={{ paddingLeft: ctx.academic ? 0 : 10, borderLeftWidth: ctx.academic ? 0 : 2, borderLeftColor: theme.primary }}>{body}</View>
+      </View>
+    );
+  if (b.variant === 'proof')
+    return (
+      <View wrap={keep ? false : undefined} style={{ marginVertical: 6 }}>
+        <Text style={{ fontSize: 10.2, fontStyle: 'italic', fontWeight: 700, color: theme.text, marginBottom: 2 }}>
+          Proof{b.title ? ` (${b.title})` : ''}.
+        </Text>
+        {body}
+        <View style={{ alignItems: 'flex-end' }}>
+          <View style={{ width: 6, height: 6, borderWidth: 0.8, borderColor: theme.text }} />
+        </View>
+      </View>
+    );
+  if (ctx.academic)
+    return (
+      <View wrap={keep ? false : undefined} style={{ marginVertical: 8, paddingVertical: 7, paddingHorizontal: 10, borderLeftWidth: 2, borderLeftColor: color, backgroundColor: tint(color, 0.95) }}>
+        <Text style={{ fontSize: 10.2, fontWeight: 700, color: shade(color, 0.15), marginBottom: 3 }}>
+          {!st.numbered && b.title ? (
+            <Inline text={b.title} ctx={ctx} size={10.2} />
+          ) : (
+            <>
+              {label}
+              {b.title ? (
+                <Text style={{ fontWeight: 400 }}>
+                  {' ('}
+                  <Inline text={b.title} ctx={ctx} size={10.2} />)
+                </Text>
+              ) : null}
+            </>
+          )}
+          .
+        </Text>
+        {body}
+      </View>
+    );
+  const formula = b.variant === 'formula' || b.variant === 'summary';
+  return (
+    <View wrap={keep ? false : undefined} style={{ marginVertical: 9, borderRadius: 8, borderWidth: 1, borderColor: tint(color, 0.7), backgroundColor: formula ? tint(color, 0.955) : '#ffffff', overflow: 'hidden' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 11, paddingVertical: 6, backgroundColor: tint(color, 0.9), borderBottomWidth: 0.8, borderBottomColor: tint(color, 0.75) }}>
+        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: color, marginRight: 7 }} />
+        <Text style={{ fontSize: 8, fontWeight: 800, letterSpacing: 1, color: shade(color, 0.12) }}>{label.toUpperCase()}</Text>
+        {b.title ? (
+          <Text style={{ fontSize: 10, fontWeight: 700, color: theme.text, marginLeft: 8, flex: 1 }}>
+            <Inline text={b.title} ctx={ctx} size={10} />
+          </Text>
+        ) : null}
+      </View>
+      <View style={{ paddingHorizontal: 13, paddingTop: 8, paddingBottom: 6 }}>{body}</View>
+    </View>
+  );
+}
+
+function StepsView({ b, ctx }: { b: StepsBlock; ctx: Ctx }) {
+  const { theme } = ctx;
+  const items = b.items ?? [];
+  return (
+    <View style={{ marginVertical: 8 }}>
+      {b.title ? <Text style={{ fontSize: 10.5, fontWeight: 700, color: theme.primaryDark, marginBottom: 6 }}><Inline text={b.title} ctx={ctx} size={10.5} /></Text> : null}
+      {items.map((it, i) => (
+        <View key={i} wrap={false} style={{ flexDirection: 'row' }}>
+          <View style={{ width: 24, alignItems: 'center' }}>
+            <View style={{ width: 17, height: 17, borderRadius: 9, backgroundColor: ctx.academic ? tint(theme.primary, 0.88) : theme.primary, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontFamily: FAMILY.sans, fontSize: 8, lineHeight: 1, fontWeight: 700, color: ctx.academic ? theme.primaryDark : '#ffffff' }}>{i + 1}</Text>
+            </View>
+            {i < items.length - 1 ? <View style={{ width: 1.2, flexGrow: 1, backgroundColor: ctx.academic ? '#cbd5e1' : tint(theme.primary, 0.6), marginVertical: 2 }} /> : null}
+          </View>
+          <View style={{ flex: 1, paddingLeft: 8, paddingBottom: 10, paddingTop: 1.5 }}>
+            {it.text ? (
+              <Text style={{ fontSize: 10.2, lineHeight: 1.5, color: theme.text }}>
+                <Inline text={it.text} ctx={ctx} size={10.2} />
+              </Text>
+            ) : null}
+            {it.math ? (
+              <View style={{ marginTop: it.text ? 4 : 0, alignItems: 'flex-start', paddingLeft: 6 }}>
+                <MathSvg tex={it.math} size={11} color={theme.text} maxWidth={ctx.contentW - 50} />
+              </View>
+            ) : null}
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 function BlockView({ b, ctx }: { b: Block; ctx: Ctx }): ReactNode {
   const { theme } = ctx;
   switch (b.type) {
@@ -367,7 +600,7 @@ function BlockView({ b, ctx }: { b: Block; ctx: Ctx }): ReactNode {
             marginBottom: b.lead ? 12 : 8,
           }}
         >
-          <Inline text={b.text} ctx={ctx} />
+          <Inline text={b.text} ctx={ctx} size={b.lead ? 12.5 : 10.5} />
         </Text>
       );
     case 'list':
@@ -416,7 +649,7 @@ function BlockView({ b, ctx }: { b: Block; ctx: Ctx }): ReactNode {
       return (
         <View wrap={false} style={{ marginVertical: 10 }}>
           <FigureCard ctx={ctx}>
-            <SceneView scene={scene} font={ctx.font} />
+            <SceneView scene={scene} font={ctx.font} rich={rich(ctx)} />
           </FigureCard>
           <Caption text={b.caption} ctx={ctx} />
         </View>
@@ -427,7 +660,7 @@ function BlockView({ b, ctx }: { b: Block; ctx: Ctx }): ReactNode {
       return (
         <View wrap={false} style={{ marginVertical: 10 }}>
           <FigureCard ctx={ctx}>
-            <SceneView scene={scene} font={ctx.font} />
+            <SceneView scene={scene} font={ctx.font} rich={rich(ctx)} />
           </FigureCard>
           <Caption text={b.caption} ctx={ctx} />
         </View>
@@ -445,11 +678,11 @@ function BlockView({ b, ctx }: { b: Block; ctx: Ctx }): ReactNode {
               <View style={{ flex: 1, paddingLeft: 8, paddingBottom: 12 }}>
                 <Text style={{ fontSize: 8.5, fontWeight: 700, color: theme.palette[i % theme.palette.length], letterSpacing: 0.6 }}>{String(it.date ?? '').toUpperCase()}</Text>
                 <Text style={{ fontSize: 11, fontWeight: 700, color: theme.text, marginTop: 1 }}>
-                  <Inline text={it.title} ctx={ctx} />
+                  <Inline text={it.title} ctx={ctx} size={11} />
                 </Text>
                 {it.text ? (
                   <Text style={{ fontSize: 9.5, lineHeight: 1.5, color: theme.muted, marginTop: 2 }}>
-                    <Inline text={it.text} ctx={ctx} />
+                    <Inline text={it.text} ctx={ctx} size={9.5} />
                   </Text>
                 ) : null}
               </View>
@@ -463,7 +696,7 @@ function BlockView({ b, ctx }: { b: Block; ctx: Ctx }): ReactNode {
           <Text style={{ fontSize: 34, color: theme.primary, fontWeight: 800, lineHeight: 1, marginRight: 8, marginTop: -2 }}>“</Text>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 12.5, fontStyle: 'italic', lineHeight: 1.55, color: theme.text }}>
-              <Inline text={b.text} ctx={ctx} />
+              <Inline text={b.text} ctx={ctx} size={12.5} />
             </Text>
             {b.author ? <Text style={{ fontSize: 9.5, fontWeight: 700, color: theme.primary, marginTop: 6 }}>— {b.author}</Text> : null}
           </View>
@@ -479,7 +712,7 @@ function BlockView({ b, ctx }: { b: Block; ctx: Ctx }): ReactNode {
           <View style={{ flex: 1 }}>
             {b.title ? <Text style={{ fontSize: 10.5, fontWeight: 700, color: t.title, marginBottom: 2 }}>{b.title}</Text> : null}
             <Text style={{ fontSize: 9.8, lineHeight: 1.5, color: '#1f2937' }}>
-              <Inline text={b.text} ctx={ctx} />
+              <Inline text={b.text} ctx={ctx} size={9.8} />
             </Text>
           </View>
         </View>
@@ -542,7 +775,7 @@ function BlockView({ b, ctx }: { b: Block; ctx: Ctx }): ReactNode {
                 </View>
               ) : null}
               <Text style={{ fontSize: 9.5, lineHeight: 1.5, color: shade(theme.muted, 0.2) }}>
-                <Inline text={c.text} ctx={ctx} />
+                <Inline text={c.text} ctx={ctx} size={9.5} />
               </Text>
             </View>
           ))}
@@ -582,6 +815,56 @@ function BlockView({ b, ctx }: { b: Block; ctx: Ctx }): ReactNode {
           ))}
         </View>
       );
+    case 'equation': {
+      let tag = '';
+      if (b.label) tag = `(${b.label})`;
+      else if (b.numbered !== false) tag = `(${++ctx.eq.n})`;
+      const tagW = tag ? 34 : 0;
+      return (
+        <View wrap={false} style={{ marginVertical: 7 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ width: tagW }} />
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              <MathSvg tex={b.latex} size={ctx.academic ? 11.5 : 11.8} color={theme.text} maxWidth={ctx.contentW - tagW * 2 - 4} />
+            </View>
+            <View style={{ width: tagW, alignItems: 'flex-end' }}>
+              {tag ? <Text style={{ fontSize: 10, color: ctx.academic ? theme.text : theme.muted }}>{tag}</Text> : null}
+            </View>
+          </View>
+          {b.caption ? (
+            <Text style={{ fontSize: 8.5, color: theme.muted, textAlign: 'center', marginTop: 3 }}>
+              <Inline text={b.caption} ctx={ctx} size={8.5} />
+            </Text>
+          ) : null}
+        </View>
+      );
+    }
+    case 'plot': {
+      const scene = layoutPlot(b, theme, Math.min(ctx.contentW - 26, 470));
+      return (
+        <View wrap={false} style={{ marginVertical: 10 }}>
+          <FigureCard ctx={ctx}>
+            <SceneView scene={scene} font={ctx.font} rich={rich(ctx)} />
+          </FigureCard>
+          <Caption text={b.caption} ctx={ctx} />
+        </View>
+      );
+    }
+    case 'figure': {
+      const scene = layoutFigure(b, theme, ctx.contentW - 26, ctx.contentH * 0.55);
+      return (
+        <View wrap={false} style={{ marginVertical: 10 }}>
+          <FigureCard ctx={ctx}>
+            <SceneView scene={scene} font={ctx.font} rich={rich(ctx)} />
+          </FigureCard>
+          <Caption text={b.caption} ctx={ctx} />
+        </View>
+      );
+    }
+    case 'box':
+      return <BoxView b={b} ctx={ctx} />;
+    case 'steps':
+      return <StepsView b={b} ctx={ctx} />;
     case 'divider':
       return (
         <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 12 }}>
@@ -600,26 +883,120 @@ function BlockView({ b, ctx }: { b: Block; ctx: Ctx }): ReactNode {
 }
 
 // --------------------------------------------------------------- cover/TOC
+function CoverArt({ style, theme, W, H }: { style: string; theme: PdfTheme; W: number; H: number }) {
+  const c1 = theme.primary;
+  const c2 = theme.accent;
+  if (style === 'orbits') {
+    const cx = W * 0.78;
+    const cy = H * 0.24;
+    return (
+      <>
+        <Circle cx={cx} cy={cy} r={W * 0.5} fill={c1} fillOpacity={0.16} />
+        <Circle cx={cx} cy={cy} r={W * 0.32} fill={c1} fillOpacity={0.18} />
+        {[0, 60, 120].map((a) => (
+          <G key={a} transform={`rotate(${a} ${cx} ${cy})`}>
+            <Ellipse cx={cx} cy={cy} rx={W * 0.3} ry={W * 0.1} stroke="#ffffff" strokeOpacity={0.55} strokeWidth={1.1} fill="none" />
+          </G>
+        ))}
+        <Circle cx={cx} cy={cy} r={W * 0.035} fill={c2} />
+        <Circle cx={cx} cy={cy} r={W * 0.06} fill={c2} fillOpacity={0.25} />
+        <Circle cx={cx + W * 0.3} cy={cy} r={4} fill="#ffffff" />
+        <Circle cx={cx - W * 0.15} cy={cy - W * 0.26 * 0.866 * 0.8} r={3.5} fill={c2} />
+        <Circle cx={cx - W * 0.12} cy={cy + W * 0.2} r={3} fill="#ffffff" fillOpacity={0.8} />
+        {Array.from({ length: 70 }).map((_, i) => {
+          const x = (Math.sin(i * 12.9898) * 43758.5453) % 1;
+          const y = (Math.sin(i * 78.233) * 12345.678) % 1;
+          return <Circle key={i} cx={Math.abs(x) * W} cy={Math.abs(y) * H} r={(i % 3) * 0.4 + 0.5} fill="#ffffff" fillOpacity={0.25 + (i % 4) * 0.12} />;
+        })}
+        <Path d={`M 0 ${H * 0.86} Q ${W * 0.5} ${H * 0.8} ${W} ${H * 0.9} L ${W} ${H} L 0 ${H} Z`} fill="#ffffff" fillOpacity={0.05} />
+      </>
+    );
+  }
+  if (style === 'waves') {
+    return (
+      <>
+        <Circle cx={W * 0.9} cy={H * 0.1} r={W * 0.35} fill={c1} fillOpacity={0.3} />
+        {Array.from({ length: 14 }).map((_, i) => {
+          const y0 = H * 0.58 + i * 9;
+          const amp = 14 + i * 2.2;
+          const ph = i * 0.35;
+          let d = `M 0 ${y0}`;
+          for (let x = 0; x <= W; x += 6) d += ` L ${x} ${(y0 + amp * Math.sin((x / W) * Math.PI * 2.4 + ph)).toFixed(2)}`;
+          return <Path key={i} d={d} stroke={i % 3 === 0 ? c2 : '#ffffff'} strokeOpacity={0.12 + (i / 14) * 0.45} strokeWidth={i % 3 === 0 ? 1.4 : 0.8} fill="none" />;
+        })}
+      </>
+    );
+  }
+  if (style === 'grid') {
+    const step = 18;
+    const curve = Array.from({ length: 120 }, (_, i) => {
+      const x = (i / 119) * W;
+      const y = H * 0.82 - Math.exp(-((x - W * 0.62) ** 2) / (2 * (W * 0.12) ** 2)) * H * 0.3;
+      return `${i ? 'L' : 'M'} ${x.toFixed(1)} ${y.toFixed(1)}`;
+    }).join(' ');
+    return (
+      <>
+        {Array.from({ length: Math.ceil(W / step) + 1 }).map((_, i) => (
+          <Line key={`v${i}`} x1={i * step} y1={0} x2={i * step} y2={H} stroke="#ffffff" strokeOpacity={i % 5 === 0 ? 0.13 : 0.05} strokeWidth={0.6} />
+        ))}
+        {Array.from({ length: Math.ceil(H / step) + 1 }).map((_, i) => (
+          <Line key={`h${i}`} x1={0} y1={i * step} x2={W} y2={i * step} stroke="#ffffff" strokeOpacity={i % 5 === 0 ? 0.13 : 0.05} strokeWidth={0.6} />
+        ))}
+        <Path d={`${curve} L ${W} ${H * 0.82} L 0 ${H * 0.82} Z`} fill={c2} fillOpacity={0.14} />
+        <Path d={curve} stroke={c2} strokeWidth={2} fill="none" />
+        <Line x1={0} y1={H * 0.82} x2={W} y2={H * 0.82} stroke="#ffffff" strokeOpacity={0.5} strokeWidth={0.8} />
+      </>
+    );
+  }
+  // gradient (default)
+  return (
+    <>
+      <Circle cx={W * 0.95} cy={H * 0.08} r={W * 0.42} fill={c1} fillOpacity={0.55} />
+      <Circle cx={W * 0.78} cy={H * 0.02} r={W * 0.22} fill={c2} fillOpacity={0.35} />
+      <Circle cx={W * 0.05} cy={H * 0.98} r={W * 0.3} fill={c1} fillOpacity={0.25} />
+      <Path d={`M 0 ${H * 0.72} C ${W * 0.3} ${H * 0.64} ${W * 0.6} ${H * 0.8} ${W} ${H * 0.7} L ${W} ${H} L 0 ${H} Z`} fill="#ffffff" fillOpacity={0.05} />
+      <Path d={`M 0 ${H * 0.78} C ${W * 0.35} ${H * 0.7} ${W * 0.65} ${H * 0.86} ${W} ${H * 0.76}`} stroke={c2} strokeWidth={1.2} strokeOpacity={0.6} fill="none" />
+      {Array.from({ length: 6 }).map((_, r) => Array.from({ length: 6 }).map((__, c) => <Circle key={`${r}-${c}`} cx={54 + c * 12} cy={60 + r * 12} r={1.3} fill="#ffffff" fillOpacity={0.35} />))}
+    </>
+  );
+}
+
 function Cover({ doc, ctx, size }: { doc: DocSpec; ctx: Ctx; size: [number, number] }) {
   const { theme } = ctx;
   const [W, H] = size;
   const m = doc.meta;
+  const style = m.coverStyle ?? (ctx.academic ? 'minimal' : 'gradient');
+  if (style === 'minimal') {
+    return (
+      <Page size={[W, H]} style={{ backgroundColor: '#ffffff', fontFamily: ctx.font, color: theme.text }}>
+        <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 14, backgroundColor: theme.primary }} />
+        <View style={{ position: 'absolute', left: 14, top: 0, bottom: 0, width: 4, backgroundColor: theme.accent }} />
+        <View style={{ position: 'absolute', left: 64, right: 54, top: H * 0.3 }}>
+          {m.kicker ? <Text style={{ fontSize: 9, letterSpacing: 2, fontWeight: 700, color: theme.primary, marginBottom: 14 }}>{m.kicker.toUpperCase()}</Text> : null}
+          <Text style={{ fontSize: W < 500 ? 26 : 34, fontWeight: 700, lineHeight: 1.15, color: theme.primaryDark }}>{m.title}</Text>
+          <View style={{ width: 60, height: 2, backgroundColor: theme.primary, marginTop: 18 }} />
+          {m.subtitle ? <Text style={{ fontSize: W < 500 ? 12 : 14, lineHeight: 1.5, marginTop: 16, color: theme.muted }}>{m.subtitle}</Text> : null}
+        </View>
+        <View style={{ position: 'absolute', left: 64, right: 54, bottom: 60 }}>
+          {m.author ? <Text style={{ fontSize: 12, fontWeight: 700, color: theme.text }}>{m.author}</Text> : null}
+          {m.date ? <Text style={{ fontSize: 10, color: theme.muted, marginTop: 4 }}>{m.date}</Text> : null}
+        </View>
+      </Page>
+    );
+  }
   return (
     <Page size={[W, H]} style={{ backgroundColor: theme.coverBg, fontFamily: ctx.font, color: theme.coverText }}>
       <Svg width={W} height={H - 1} style={{ position: 'absolute', left: 0, top: 0 }}>
-        <Circle cx={W * 0.95} cy={H * 0.08} r={W * 0.42} fill={theme.primary} fillOpacity={0.55} />
-        <Circle cx={W * 0.78} cy={H * 0.02} r={W * 0.22} fill={theme.accent} fillOpacity={0.35} />
-        <Circle cx={W * 0.05} cy={H * 0.98} r={W * 0.3} fill={theme.primary} fillOpacity={0.25} />
-        <Path d={`M 0 ${H * 0.72} C ${W * 0.3} ${H * 0.64} ${W * 0.6} ${H * 0.8} ${W} ${H * 0.7} L ${W} ${H} L 0 ${H} Z`} fill="#ffffff" fillOpacity={0.05} />
-        <Path d={`M 0 ${H * 0.78} C ${W * 0.35} ${H * 0.7} ${W * 0.65} ${H * 0.86} ${W} ${H * 0.76}`} stroke={theme.accent} strokeWidth={1.2} strokeOpacity={0.6} fill="none" />
-        {Array.from({ length: 6 }).map((_, r) =>
-          Array.from({ length: 6 }).map((__, c) => <Circle key={`${r}-${c}`} cx={54 + c * 12} cy={60 + r * 12} r={1.3} fill="#ffffff" fillOpacity={0.35} />),
-        )}
+        <CoverArt style={style} theme={theme} W={W} H={H} />
       </Svg>
-      <View style={{ position: 'absolute', left: 54, right: 54, top: H * 0.34 }}>
-        <View style={{ flexDirection: 'row', marginBottom: 18 }}>
-          <View style={{ width: 44, height: 4, backgroundColor: theme.accent, borderRadius: 2 }} />
-        </View>
+      <View style={{ position: 'absolute', left: 54, right: style === 'orbits' ? 120 : 54, top: H * (style === 'waves' || style === 'grid' ? 0.2 : 0.4) }}>
+        {m.kicker ? (
+          <Text style={{ fontSize: 8.5, letterSpacing: 2.2, fontWeight: 700, color: theme.accent, marginBottom: 14 }}>{m.kicker.toUpperCase()}</Text>
+        ) : (
+          <View style={{ flexDirection: 'row', marginBottom: 18 }}>
+            <View style={{ width: 44, height: 4, backgroundColor: theme.accent, borderRadius: 2 }} />
+          </View>
+        )}
         <Text style={{ fontSize: W < 500 ? 26 : 34, fontWeight: 800, lineHeight: 1.15, color: theme.coverText }}>{m.title}</Text>
         {m.subtitle ? <Text style={{ fontSize: W < 500 ? 12 : 14.5, lineHeight: 1.45, marginTop: 14, color: tint(theme.coverBg, 0.75) }}>{m.subtitle}</Text> : null}
       </View>
@@ -683,13 +1060,19 @@ function Toc({ doc, ctx }: { doc: DocSpec; ctx: Ctx }) {
 }
 
 // Keep headings together with an unbreakable visual that follows them.
-const ATOMIC = new Set(['diagram', 'chart', 'image', 'kpis', 'callout', 'quote', 'columns', 'signature']);
+const ATOMIC = new Set(['diagram', 'chart', 'image', 'kpis', 'callout', 'quote', 'columns', 'signature', 'equation', 'plot', 'figure']);
 function groupBlocks(blocks: Block[]): Block[][] {
   const out: Block[][] = [];
   for (let i = 0; i < blocks.length; i++) {
     const b = blocks[i];
     const next = blocks[i + 1];
     if (b.type === 'heading' && next && ATOMIC.has(next.type)) {
+      out.push([b, next]);
+      i++;
+    } else if (b.type === 'heading' && next?.type === 'box' && boxContentLength(next) < 700) {
+      out.push([b, next]);
+      i++;
+    } else if (b.type === 'paragraph' && next?.type === 'equation' && b.text.length < 220 && blocks[i - 1]?.type !== 'heading') {
       out.push([b, next]);
       i++;
     } else if (b.type === 'heading' && next?.type === 'paragraph' && blocks[i + 2] && ATOMIC.has(blocks[i + 2].type) && next.text.length < 260) {
@@ -707,7 +1090,21 @@ export interface RenderOpts {
   knownPages?: PageMap;
 }
 
-export function PdfDocument({ doc, opts }: { doc: DocSpec; opts: RenderOpts }) {
+// Some subset fonts ship broken empty glyphs for U+2002/U+2009/U+200B (fontkit crashes on them).
+const BAD_SPACES = /[\u2002\u2009\u200B\uFEFF]/g;
+function sanitize<T>(v: T): T {
+  if (typeof v === 'string') return v.replace(BAD_SPACES, (c) => (c === '\u2002' ? '\u2000' : c === '\u2009' ? '\u2006' : '')) as T;
+  if (Array.isArray(v)) return v.map(sanitize) as T;
+  if (v && typeof v === 'object') {
+    const o: Record<string, unknown> = {};
+    for (const [k, x] of Object.entries(v)) o[k] = k === 'dataUrl' || k === 'src' ? x : sanitize(x);
+    return o as T;
+  }
+  return v;
+}
+
+export function PdfDocument({ doc: rawDoc, opts }: { doc: DocSpec; opts: RenderOpts }) {
+  const doc = sanitize(rawDoc);
   const m = doc.meta;
   const theme = THEMES[m.theme] ?? THEMES.ocean;
   const font = FAMILY[m.font] ?? FAMILY.sans;
@@ -732,9 +1129,13 @@ export function PdfDocument({ doc, opts }: { doc: DocSpec; opts: RenderOpts }) {
       headingNums[b.id] = `${h1}.${h2}`;
     }
   }
+  const academic = m.style === 'academic';
   const ctx: Ctx = {
     theme,
     font,
+    academic,
+    eq: { n: 0 },
+    boxes: {},
     contentW: size[0] - PX * 2,
     contentH: size[1] - PT - PB,
     assets: opts.assets,
@@ -749,26 +1150,58 @@ export function PdfDocument({ doc, opts }: { doc: DocSpec; opts: RenderOpts }) {
   return (
     <Document title={m.title} author={m.author} subject={m.subtitle} creator="Fluent PDF Studio" producer="Fluent PDF Studio">
       {m.cover ? <Cover doc={doc} ctx={ctx} size={size} /> : null}
-      <Page size={size} style={{ paddingTop: PT, paddingBottom: PB, paddingHorizontal: PX, fontFamily: font, color: theme.text, fontSize: 10.5 }}>
+      <Page size={size} style={{ paddingTop: PT, paddingBottom: PB, paddingHorizontal: PX, fontFamily: font, color: theme.text, fontSize: 10.5, lineHeight: 1.5 }}>
         {/* page chrome */}
-        <View fixed style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 5, backgroundColor: theme.primary }} />
-        <View fixed style={{ position: 'absolute', top: 0, left: 0, width: size[0] * 0.28, height: 5, backgroundColor: theme.accent }} />
-        {headerText ? (
-          <View fixed style={{ position: 'absolute', top: 22, left: PX, right: PX, flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 0.6, borderBottomColor: theme.border, paddingBottom: 6 }}>
-            <Text style={{ fontSize: 7.8, color: theme.muted, fontWeight: 600 }}>{headerText}</Text>
-            <Text style={{ fontSize: 7.8, color: theme.muted }}>{m.date ?? ''}</Text>
-          </View>
-        ) : null}
-        <View fixed style={{ position: 'absolute', bottom: 24, left: PX, right: PX, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={{ fontSize: 7.8, color: theme.muted }}>{m.footer ?? ''}</Text>
-          {m.pageNumbers ? (
-            <Text style={{ fontSize: 7.8, color: theme.muted, fontWeight: 600 }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
-          ) : null}
-        </View>
+        {academic ? (
+          <>
+            {headerText ? (
+              <View fixed style={{ position: 'absolute', top: 26, left: PX, right: PX, flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 0.5, borderBottomColor: '#94a3b8', paddingBottom: 4 }}>
+                <Text style={{ fontSize: 8, color: theme.muted, fontStyle: 'italic' }}>{headerText}</Text>
+                <Text style={{ fontSize: 8, color: theme.muted }}>{m.author ?? m.date ?? ''}</Text>
+              </View>
+            ) : null}
+            <View fixed style={{ position: 'absolute', bottom: 26, left: PX, right: PX, flexDirection: 'row', justifyContent: 'center' }}>
+              {m.footer ? <Text style={{ fontSize: 8, color: theme.muted, position: 'absolute', left: 0 }}>{m.footer}</Text> : null}
+              {m.pageNumbers ? <Text style={{ fontSize: 9, color: theme.text }} render={({ pageNumber }) => `${pageNumber}`} /> : null}
+            </View>
+          </>
+        ) : (
+          <>
+            <View fixed style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 5, backgroundColor: theme.primary }} />
+            <View fixed style={{ position: 'absolute', top: 0, left: 0, width: size[0] * 0.28, height: 5, backgroundColor: theme.accent }} />
+            {headerText ? (
+              <View fixed style={{ position: 'absolute', top: 22, left: PX, right: PX, flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 0.6, borderBottomColor: theme.border, paddingBottom: 6 }}>
+                <Text style={{ fontSize: 7.8, color: theme.muted, fontWeight: 600 }}>{headerText}</Text>
+                <Text style={{ fontSize: 7.8, color: theme.muted }}>{m.date ?? ''}</Text>
+              </View>
+            ) : null}
+            <View fixed style={{ position: 'absolute', bottom: 24, left: PX, right: PX, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={{ fontSize: 7.8, color: theme.muted }}>{m.footer ?? ''}</Text>
+              {m.pageNumbers ? (
+                <Text style={{ fontSize: 7.8, color: theme.muted, fontWeight: 600 }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
+              ) : null}
+            </View>
+          </>
+        )}
 
         {/* title block when there is no cover */}
-        {!m.cover ? (
+        {!m.cover && academic ? (
+          <View style={{ marginBottom: 14, alignItems: 'center' }}>
+            {m.kicker ? <Text style={{ fontSize: 8, letterSpacing: 1.8, color: theme.primary, fontWeight: 700, marginBottom: 8 }}>{m.kicker.toUpperCase()}</Text> : null}
+            <Text style={{ fontSize: size[0] < 500 ? 19 : 22, fontWeight: 700, color: theme.text, lineHeight: 1.25, textAlign: 'center' }}>{m.title}</Text>
+            {m.subtitle ? <Text style={{ fontSize: 11.5, color: theme.muted, marginTop: 6, lineHeight: 1.4, textAlign: 'center', fontStyle: 'italic' }}>{m.subtitle}</Text> : null}
+            {m.author ? <Text style={{ fontSize: 11, color: theme.text, marginTop: 10 }}>{m.author}</Text> : null}
+            {m.date ? <Text style={{ fontSize: 9.5, color: theme.muted, marginTop: 3 }}>{m.date}</Text> : null}
+            <View style={{ alignSelf: 'stretch', height: 0.7, backgroundColor: theme.text, marginTop: 12 }} />
+          </View>
+        ) : null}
+        {!m.cover && !academic ? (
           <View style={{ marginBottom: 16 }}>
+            {m.kicker ? (
+              <View style={{ flexDirection: 'row', marginBottom: 8 }}>
+                <Text style={{ fontSize: 7.8, letterSpacing: 1.6, color: theme.primary, fontWeight: 800, backgroundColor: theme.soft, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 4 }}>{m.kicker.toUpperCase()}</Text>
+              </View>
+            ) : null}
             <Text style={{ fontSize: size[0] < 500 ? 22 : 27, fontWeight: 800, color: theme.primaryDark, lineHeight: 1.2 }}>{m.title}</Text>
             {m.subtitle ? <Text style={{ fontSize: 12, color: theme.muted, marginTop: 6, lineHeight: 1.45 }}>{m.subtitle}</Text> : null}
             {m.author || m.date ? (

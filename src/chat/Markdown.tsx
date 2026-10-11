@@ -1,8 +1,25 @@
 import { Fragment, type ReactNode } from 'react';
 import { tokenizeInline } from '../inline';
+import { texToRuns } from '../pdf/texInline';
+
+function MathSpan({ tex }: { tex: string }) {
+  return (
+    <span className="math">
+      {texToRuns(tex).map((r, i) => {
+        let n: ReactNode = r.text;
+        if (r.italic) n = <i>{n}</i>;
+        if (r.bold) n = <b>{n}</b>;
+        if (r.va === 'super') n = <sup>{n}</sup>;
+        if (r.va === 'sub') n = <sub>{n}</sub>;
+        return <Fragment key={i}>{n}</Fragment>;
+      })}
+    </span>
+  );
+}
 
 function inline(text: string): ReactNode {
   return tokenizeInline(text).map((t, i) => {
+    if (t.math) return <MathSpan key={i} tex={t.text} />;
     let n: ReactNode = t.text;
     if (t.code) n = <code>{n}</code>;
     if (t.bold) n = <strong>{n}</strong>;

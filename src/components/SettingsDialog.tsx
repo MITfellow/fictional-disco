@@ -52,8 +52,8 @@ export function SettingsDialog({ open, settings, onClose, onSave }: Props) {
             {isLocal ? (
               <MessageBar intent="info">
                 <MessageBarBody>
-                  The built-in engine works offline with no key. It understands document types (report, proposal, résumé, invoice, letter, meeting notes, study guide, project plan) and
-                  edit commands (charts, flowcharts with <code>A -&gt; B</code>, tables, themes, layout…). Connect an LLM to have it write anything.
+                  The built-in engine works offline and knows a fixed set of documents and commands, including physics notes on projectiles, forces, oscillations, circuits and optics. To let the AI
+                  write, draw and typeset <b>anything</b>, pick <b>Google Gemini</b> or <b>Groq</b>. Both give you a free API key in about a minute.
                 </MessageBarBody>
               </MessageBar>
             ) : (
