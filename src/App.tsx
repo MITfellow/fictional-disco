@@ -165,8 +165,24 @@ export default function App() {
     if (!lastBlob.current) return;
     const filename = `${slug(doc.meta.title)}.pdf`;
     const blob = lastBlob.current;
-    // Prefer the native Save dialog. Unlike anchor downloads, this works in
-    // embedded/sandboxed app previews when the browser supports it.
+    // Embedded previews commonly block blob: downloads. Upload the already
+    // compiled bytes to a short-lived same-origin endpoint and navigate to a
+    // real HTTP attachment response. Production hosts can provide the same
+    // endpoint; if unavailable we continue to native browser fallbacks.
+    try {
+      const response = await fetch('/__pdf_download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/pdf', 'X-PDF-Filename': encodeURIComponent(filename) },
+        body: blob,
+      });
+      if (response.ok) {
+        const result = await response.json() as { url: string };
+        window.location.assign(result.url);
+        return;
+      }
+    } catch {
+      /* static host: use browser APIs below */
+    }
     const picker = (window as unknown as { showSaveFilePicker?: (options: unknown) => Promise<{ createWritable: () => Promise<{ write: (data: Blob) => Promise<void>; close: () => Promise<void> }> }> }).showSaveFilePicker;
     if (picker) {
       try {
