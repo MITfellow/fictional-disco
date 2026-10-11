@@ -1200,6 +1200,7 @@ function sanitize<T>(v: T): T {
 export function PdfDocument({ doc: rawDoc, opts }: { doc: DocSpec; opts: RenderOpts }) {
   const doc = sanitize(rawDoc);
   const m = doc.meta;
+  const masterclass = /INSTITUTE OF ADVANCED PHYSICS/i.test(m.kicker ?? '');
   const theme = THEMES[m.theme] ?? THEMES.ink;
   const font = FAMILY[m.font] ?? FAMILY.sans;
   const base = PAGE_DIMS[m.pageSize] ?? PAGE_DIMS.A4;
@@ -1324,10 +1325,10 @@ export function PdfDocument({ doc: rawDoc, opts }: { doc: DocSpec; opts: RenderO
           </View>
         ) : null}
         {!m.cover && academic && !minimal ? (
-          <View style={{ marginBottom: 14, alignItems: 'center' }}>
-            {m.kicker ? <Text style={{ fontSize: 8, letterSpacing: 1.8, color: theme.primary, fontWeight: 700, marginBottom: 8 }}>{m.kicker.toUpperCase()}</Text> : null}
-            <Text style={{ fontSize: size[0] < 500 ? 19 : 22, fontWeight: 600, color: theme.text, lineHeight: 1.25, textAlign: 'center', letterSpacing: -0.2 }}>{m.title}</Text>
-            {m.subtitle ? <Text style={{ fontSize: 11.5, color: theme.muted, marginTop: 6, lineHeight: 1.4, textAlign: 'center', fontStyle: 'italic' }}>{m.subtitle}</Text> : null}
+          <View style={{ marginBottom: masterclass ? 20 : 14, paddingTop: masterclass ? 18 : 0, paddingBottom: masterclass ? 12 : 0, alignItems: 'center', borderTopWidth: masterclass ? 0.8 : 0, borderTopColor: theme.primary }}>
+            {m.kicker ? <Text style={{ fontSize: masterclass ? 8.5 : 8, letterSpacing: masterclass ? 2.2 : 1.8, color: theme.primary, fontWeight: 700, marginBottom: masterclass ? 14 : 8 }}>{m.kicker.toUpperCase()}</Text> : null}
+            <Text style={{ fontSize: masterclass ? (size[0] < 500 ? 24 : 29) : size[0] < 500 ? 19 : 22, fontWeight: masterclass ? 500 : 600, color: theme.text, lineHeight: masterclass ? 1.16 : 1.25, textAlign: 'center', letterSpacing: masterclass ? -0.45 : -0.2 }}>{m.title}</Text>
+            {m.subtitle ? <Text style={{ maxWidth: masterclass ? '82%' : '100%', fontSize: masterclass ? 12 : 11.5, color: theme.muted, marginTop: masterclass ? 10 : 6, lineHeight: 1.4, textAlign: 'center', fontStyle: 'italic' }}>{m.subtitle}</Text> : null}
             {m.author ? <Text style={{ fontSize: 11, color: theme.text, marginTop: 10 }}>{m.author}</Text> : null}
             {m.date ? <Text style={{ fontSize: 9.5, color: theme.muted, marginTop: 3 }}>{m.date}</Text> : null}
             <View style={{ alignSelf: 'stretch', height: 0.5, backgroundColor: vivid ? theme.text : theme.border, marginTop: 16 }} />

@@ -24,16 +24,16 @@ export function induction(): DocSpec {
         undefined,
         'A changing magnetic field can drive a current through a circuit with no battery at all. We follow that idea from Faraday’s experiments to flux, Faraday’s and Lenz’s laws, inductance, RL circuits and the AC generator.',
       ),
-
+      // Page 2 begins the chapter itself.
+      { id: uid(), type: 'pagebreak' },
       // A dedicated full-page synthesis plate: complex on purpose, but layered
       // so students can follow cause → flux change → emf → current → load.
-      { id: uid(), type: 'pagebreak' },
       {
         ...FIG(
           170,
           210,
           [
-            { type: 'text', at: [85, 205], text: 'COMPLETE ELECTROMAGNETIC INDUCTION SYSTEM', fontSize: 10, color: '#3a3631' },
+            { type: 'text', at: [85, 205], text: 'CHAPTER 1 · THE COMPLETE INDUCTION SYSTEM', fontSize: 10, color: '#3a3631' },
             { type: 'text', at: [85, 197], text: '1 · CAUSE — change the magnetic flux linked with a coil', fontSize: 8.5, color: '#6b645a' },
             { type: 'magnet', center: [27, 181], size: [34, 11], kind: 'SN' },
             { type: 'text', at: [27, 168], text: 'moving magnet', fontSize: 7.5, color: '#6b645a' },
