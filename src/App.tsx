@@ -184,7 +184,6 @@ export default function App() {
     const a = document.createElement('a');
     a.href = url;
     a.download = filename;
-    a.target = '_self';
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -362,10 +361,9 @@ export default function App() {
           <Tooltip content="AI settings" relationship="label">
             <ToolbarButton type="button" icon={<Settings20Regular />} onClick={() => setSettingsOpen(true)} />
           </Tooltip>
-          <button type="button" className="native-download" disabled={!pdfUrl} onClick={() => void download()}>
-            <ArrowDownload20Regular />
-            <span>Download PDF</span>
-          </button>
+          <Button type="button" appearance="primary" icon={<ArrowDownload20Regular />} onClick={() => void download()} disabled={!pdfUrl} className="download-btn">
+            Download PDF
+          </Button>
         </Toolbar>
       </header>
 
