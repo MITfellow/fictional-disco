@@ -28,7 +28,7 @@ import {
   ZoomOut20Regular,
 } from '@fluentui/react-icons';
 import type { Asset } from './types';
-import { useDarkMode, useSettings, useStudio } from './store';
+import { removeUnsafeComponents, useDarkMode, useSettings, useStudio } from './store';
 import { ChatPanel } from './chat/ChatPanel';
 import { PdfPreview, type Zoom } from './preview/PdfPreview';
 import { compiler } from './pdf/client';
@@ -106,6 +106,13 @@ export default function App() {
   const lastBlob = useRef<Blob | null>(null);
 
   const { doc, assets, messages, past, future } = state;
+
+  // Remove a malformed AI-generated primitive from both current and persisted
+  // state before it can repeatedly poison the preview.
+  useEffect(() => {
+    const repaired = removeUnsafeComponents(doc);
+    if (repaired !== doc) setDoc(repaired);
+  }, [doc, setDoc]);
 
   // ------------------------------------------------------------ compile
   useEffect(() => {

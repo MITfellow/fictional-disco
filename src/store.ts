@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer, useState } from 'react';
-import type { AiSettings, Asset, ChatMessage, DocSpec } from './types';
+import type { AiSettings, Asset, Block, ChatMessage, DocSpec } from './types';
 import { buildWelcome } from './ai/templates';
 import { normalizeDoc, uid } from './normalize';
 
@@ -24,6 +24,37 @@ type Action =
   | { type: 'clearChat' };
 
 const HISTORY = 60;
+const SAFE_NUMBER = 1_000_000_000;
+
+function hasUnsafeNumber(value: unknown): boolean {
+  if (typeof value === 'number') return !Number.isFinite(value) || Math.abs(value) > SAFE_NUMBER;
+  if (Array.isArray(value)) return value.some(hasUnsafeNumber);
+  if (!value || typeof value !== 'object') return false;
+  return Object.values(value as Record<string, unknown>).some(hasUnsafeNumber);
+}
+
+/** Remove a single malformed generated component instead of allowing it to
+ * poison the saved document and every subsequent compile. */
+export function removeUnsafeComponents(doc: DocSpec): DocSpec {
+  let changed = false;
+  const blocks: Block[] = [];
+  for (const block of doc.blocks) {
+    if (block.type === 'figure') {
+      const elements = block.elements.filter((element) => !hasUnsafeNumber(element));
+      if (elements.length !== block.elements.length) changed = true;
+      if (!elements.length) {
+        changed = true;
+        continue;
+      }
+      blocks.push(elements.length === block.elements.length ? block : { ...block, elements });
+    } else if (hasUnsafeNumber(block)) {
+      changed = true;
+    } else {
+      blocks.push(block);
+    }
+  }
+  return changed ? { ...doc, blocks } : doc;
+}
 
 function reducer(s: StudioState, a: Action): StudioState {
   switch (a.type) {
@@ -70,7 +101,7 @@ function load(): StudioState {
     if (raw) {
       const j = JSON.parse(raw);
       return {
-        doc: normalizeDoc(j.doc),
+        doc: removeUnsafeComponents(normalizeDoc(j.doc)),
         assets: j.assets ?? {},
         messages: Array.isArray(j.messages) && j.messages.length ? j.messages : [welcomeMessage()],
         past: [],
