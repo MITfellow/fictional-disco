@@ -190,8 +190,9 @@ body.resizing iframe, body.resizing canvas { pointer-events: none; }
 .compile-error { margin: 8px; }
 .pdf-scroller { flex: 1; overflow: auto; background: var(--colorNeutralBackground3); }
 .pdf-pages { display: flex; flex-direction: column; align-items: center; gap: 22px; padding: 26px 30px 64px; min-width: fit-content; }
-.pdf-page { position: relative; background: #fbfaf6; border-radius: 2px; box-shadow: var(--paper-shadow); flex-shrink: 0; animation: fadein 0.3s ease-out; }
-@keyframes fadein { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.pdf-page { position: relative; background: #fbfaf6; border-radius: 2px; box-shadow: var(--paper-shadow); flex-shrink: 0; }
+/* Pages are rendered off-screen and swapped as a complete buffer. Animating the
+   replacement buffer caused a visible full-preview blink after every edit. */
 .pdf-page canvas { display: block; border-radius: 2px; }
 .app.dark .pdf-page canvas { filter: brightness(0.92) sepia(0.06); }
 .pdf-page-badge { position: absolute; right: 0; bottom: -19px; font-size: 11px; color: var(--colorNeutralForeground4, var(--colorNeutralForeground3)); }
