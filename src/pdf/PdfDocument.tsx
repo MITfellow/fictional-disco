@@ -311,9 +311,9 @@ function TableView({ b, ctx }: { b: TableBlock; ctx: Ctx }) {
   }
   return (
     <View style={{ marginVertical: 8 }}>
-      <View style={{ borderRadius: 6, borderWidth: 1, borderColor: theme.border, overflow: 'hidden' }}>
+      <View style={{ borderRadius: ctx.vivid ? 6 : 2, borderTopWidth: 1, borderBottomWidth: 1, borderLeftWidth: ctx.vivid ? 1 : 0, borderRightWidth: ctx.vivid ? 1 : 0, borderColor: ctx.vivid ? theme.border : theme.muted, overflow: 'hidden' }}>
         {headers.length ? (
-          <View style={{ flexDirection: 'row', backgroundColor: ctx.vivid ? theme.primary : theme.soft, borderBottomWidth: ctx.vivid ? 0 : 1, borderBottomColor: theme.primary }} wrap={false}>
+          <View style={{ flexDirection: 'row', backgroundColor: ctx.vivid ? theme.primary : 'transparent', borderBottomWidth: ctx.vivid ? 0 : 0.7, borderBottomColor: ctx.vivid ? theme.primary : theme.muted }} wrap={false}>
             {Array.from({ length: cols }, (_, c) => (
               <Text
                 key={c}
@@ -340,8 +340,8 @@ function TableView({ b, ctx }: { b: TableBlock; ctx: Ctx }) {
               wrap={false}
               style={{
                 flexDirection: 'row',
-                backgroundColor: isTotal ? theme.soft : b.striped !== false && ri % 2 === 1 ? theme.softer : '#ffffff',
-                borderTopWidth: ri === 0 && headers.length ? 0 : isTotal ? 1.2 : 0.6,
+                backgroundColor: isTotal ? theme.soft : ctx.vivid && b.striped !== false && ri % 2 === 1 ? theme.softer : 'transparent',
+                borderTopWidth: ri === 0 && headers.length ? 0 : isTotal ? 1 : ctx.vivid ? 0.6 : 0.35,
                 borderTopColor: isTotal ? theme.primary : theme.border,
               }}
             >
@@ -397,7 +397,7 @@ function Caption({ text, ctx }: { text?: string; ctx: Ctx }) {
 function FigureCard({ children, ctx }: { children: ReactNode; ctx: Ctx }) {
   if (ctx.academic) return <View style={{ paddingVertical: 4, alignItems: 'center' }}>{children}</View>;
   return (
-    <View style={{ borderWidth: ctx.vivid ? 1 : 0.7, borderColor: ctx.theme.border, borderRadius: 8, padding: 12, backgroundColor: ctx.vivid ? '#ffffff' : 'transparent', alignItems: 'center' }}>{children}</View>
+    <View style={{ borderWidth: ctx.vivid ? 1 : 0, borderColor: ctx.theme.border, borderRadius: ctx.vivid ? 8 : 0, paddingVertical: ctx.vivid ? 12 : 8, paddingHorizontal: ctx.vivid ? 12 : 4, backgroundColor: ctx.vivid ? '#ffffff' : 'transparent', alignItems: 'center' }}>{children}</View>
   );
 }
 
@@ -669,11 +669,11 @@ function BlockView({ b, ctx }: { b: Block; ctx: Ctx }): ReactNode {
     case 'diagram': {
       const maxW = ctx.contentW - 26;
       const maxH = Math.min(b.height ?? 9999, ctx.contentH * 0.62);
-      let scene0 = layoutDiagram(b, theme);
+      let scene0 = layoutDiagram(b, theme, !ctx.vivid);
       let k = Math.min(maxW / scene0.width, maxH / scene0.height, 1.1);
       if (b.kind === 'flowchart' && k < 0.68) {
         // too cramped: try the other direction and keep whichever reads better
-        const alt = layoutDiagram({ ...b, direction: b.direction === 'LR' ? 'TB' : 'LR' }, theme);
+        const alt = layoutDiagram({ ...b, direction: b.direction === 'LR' ? 'TB' : 'LR' }, theme, !ctx.vivid);
         const k2 = Math.min(maxW / alt.width, maxH / alt.height, 1.1);
         if (k2 > k * 1.15) {
           scene0 = alt;
