@@ -41,7 +41,6 @@ function pdfDownloadBridge(): Plugin {
         res.end('Download expired');
         return;
       }
-      files.delete(match[1]);
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Length', file.data.length);
       res.setHeader('Content-Disposition', `attachment; filename="${file.name}"`);

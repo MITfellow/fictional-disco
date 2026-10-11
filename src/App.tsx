@@ -102,6 +102,7 @@ export default function App() {
   const [zoom, setZoom] = useState<Zoom>('fit');
   const [pdfData, setPdfData] = useState<ArrayBuffer | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [compiling, setCompiling] = useState(false);
   const [compileError, setCompileError] = useState<string | null>(null);
   const [info, setInfo] = useState({ pages: 0, current: 1, scale: 1 });
@@ -154,6 +155,28 @@ export default function App() {
     setPdfUrl(url);
     return () => URL.revokeObjectURL(url);
   }, [pdfData]);
+
+  // Prepare a real HTTP attachment before the user clicks. Keeping the click
+  // synchronous is essential inside Arena's sandbox: user activation is lost
+  // if we wait for an upload after the click.
+  useEffect(() => {
+    if (!pdfData) {
+      setDownloadUrl(null);
+      return;
+    }
+    let cancelled = false;
+    setDownloadUrl(null);
+    const filename = `${slug(doc.meta.title)}.pdf`;
+    fetch('/__pdf_download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/pdf', 'X-PDF-Filename': encodeURIComponent(filename) },
+      body: new Blob([pdfData.slice(0)], { type: 'application/pdf' }),
+    })
+      .then(async (response) => response.ok ? (await response.json() as { url: string }).url : null)
+      .then((url) => { if (!cancelled) setDownloadUrl(url); })
+      .catch(() => { if (!cancelled) setDownloadUrl(null); });
+    return () => { cancelled = true; };
+  }, [pdfData, doc.meta.title]);
 
   // ------------------------------------------------------------ actions
   const newDoc = useCallback(() => {
@@ -385,9 +408,15 @@ export default function App() {
           <Tooltip content="AI settings" relationship="label">
             <ToolbarButton type="button" icon={<Settings20Regular />} onClick={() => setSettingsOpen(true)} />
           </Tooltip>
-          <Button type="button" appearance="primary" icon={<ArrowDownload20Regular />} onClick={() => void download()} disabled={!pdfUrl} className="download-btn">
-            Download PDF
-          </Button>
+          {downloadUrl ? (
+            <Button as="a" appearance="primary" icon={<ArrowDownload20Regular />} href={downloadUrl} target="_blank" download={`${slug(doc.meta.title)}.pdf`} className="download-btn">
+              Download PDF
+            </Button>
+          ) : (
+            <Button type="button" appearance="primary" icon={<ArrowDownload20Regular />} onClick={() => void download()} disabled={!pdfUrl} className="download-btn">
+              {pdfData ? 'Preparing…' : 'Download PDF'}
+            </Button>
+          )}
         </Toolbar>
       </header>
 
