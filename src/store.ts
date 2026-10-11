@@ -3,7 +3,7 @@ import type { AiSettings, Asset, Block, ChatMessage, DocSpec } from './types';
 import { buildWelcome } from './ai/templates';
 import { normalizeDoc, uid } from './normalize';
 
-const STATE_KEY = 'fluent-pdf-studio.state.v1';
+const STATE_KEY = 'fluent-pdf-studio.state.v2'; // fresh production workspace; v1 drafts are intentionally retired
 const SETTINGS_KEY = 'fluent-pdf-studio.settings.v1';
 
 export interface StudioState {
@@ -100,7 +100,7 @@ export function welcomeMessage(): ChatMessage {
     role: 'assistant',
     time: Date.now(),
     engine: 'Fluent PDF Studio',
-    text: "Hi! I'm your **AI document designer**. Tell me what to make and I'll write, draw and typeset it as a real PDF on the right: physics or maths notes with equations, plots and diagrams, lab reports, worksheets, reports, proposals and more.\n\nKeep refining in plain words, e.g. *add a worked example*, *add a graph of $v$ against $t$*, *make it landscape*, *add a cover page*. Attach images with the paperclip button, or paste or drop them here.",
+    text: "Welcome to a fresh **PDF Studio** workspace. Describe a document and I’ll write, draw and typeset it on the right. Then keep refining it in plain words—edits preserve the rest of your work.\n\nTry: *create an EMI study guide with diagrams and worked examples*. You can also [open the sample EMI PDF](/sample-electromagnetic-induction.pdf).",
   };
 }
 
